@@ -1,0 +1,20 @@
+#!name=小红书去广告
+#!desc=移除小红书广告
+#!author=ccyykk666[https://github.com/ccyykk666]
+#!system=iOS, iPadOS
+#!loon_version=3.5.1(978)
+#!date=2026-08-25
+#!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/xiaohongshu/icon.jpg
+
+[Argument]
+FilterVideo=switch,false,tag=过滤视频,desc=移除推荐流中的视频内容
+
+[Rewrite]
+# 推荐流广告
+response if ${url} ~= /^https:\/\/rec\.xiaohongshu\.com\/api\/sns\/v6\/homefeed(?:\?.*)?$/ && ${response.status} == 200 then response.json.jq("if (.data|type)==\"array\" then .data|=map(select(.is_ads!=true)) else . end")
+
+# 推荐流视频
+response if ${FilterVideo} == true && ${url} ~= /^https:\/\/rec\.xiaohongshu\.com\/api\/sns\/v6\/homefeed(?:\?.*)?$/ && ${response.status} == 200 then response.json.jq("if (.data|type)==\"array\" then .data|=map(select(.type!=\"video\")) else . end")
+
+[Mitm]
+hostname = rec.xiaohongshu.com

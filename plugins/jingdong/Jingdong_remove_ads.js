@@ -389,6 +389,8 @@ if (!$response.body) {
       // “直播讲解”和“红包雨”共用 liveInfo 浮层数据。
       const data = obj?.commonBaseInfo?.data;
       if (data?.liveInfo) delete data.liveInfo;
+      // 商品页右侧“活动小助手/国家补贴”等营销助手浮窗。
+      if (data?.floatingAssistant) delete data.floatingAssistant;
       if (obj?.shareData?.statusInfo) {
         obj.shareData.statusInfo.livewindow = false;
       }
@@ -429,6 +431,7 @@ if (!$response.body) {
         "ActivityFloor",
         "bpAskCommunity",
         "bpGiveGifts",
+        "bpGjhs2",
         "bpdarenping14",
         "cardBenefitLx",
         "preferenceMore"

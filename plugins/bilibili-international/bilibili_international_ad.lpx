@@ -9,7 +9,6 @@
 [Argument]
 FollowingTab=switch, true, tag=1. 关注, desc=开启时保留底栏“关注”，关闭时移除
 MessageTab=switch, true, tag=2. 消息, desc=开启时保留底栏“消息”，关闭时移除
-CommentClean=switch, true, tag=3. 评论区净化, desc=隐藏用户等级和粉丝团勋章，并将会员昵称恢复为普通颜色
 
 [Rewrite]
 # 启动广告接口：返回抓包中已验证的空响应结构
@@ -25,8 +24,5 @@ response if ${MessageTab} == false && ${url} ~= /^https:\/\/app\.bilibili\.com\/
 # “我的”页：关闭创作入口并移除创作中心分区
 response if ${url} ~= /^https:\/\/app\.bilibili\.com\/x\/v2\/account\/mine(?:\?.*)?$/ && ${response.status} == 200 then response.json.replace(["data.show_videoup", "data.show_creative"], [0, 0]) | response.json.jq(".data.sections_v2 |= map(select(.title != \"创作中心\" and all(.items[]?; .id != 3991 and .id != 3992)))")
 
-[Script]
-http-response ^https:\/\/grpc\.biliapi\.net\/bilibili\.main\.community\.reply\.v1\.Reply\/MainList(?:\?.*)?$ script-path=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/bilibili-international/bilibili_comment_clean.js, requires-body=true, binary-body-mode=true, timeout=10, enable={CommentClean}, tag=评论区净化
-
 [Mitm]
-hostname = app.bilibili.com, grpc.biliapi.net
+hostname = app.bilibili.com

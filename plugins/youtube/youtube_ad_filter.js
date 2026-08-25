@@ -4,13 +4,6 @@ const FILTER_OPTIONS = {
 
 const PLAYBACK_CONFIG_KEY = "YouTubeConfig";
 const PLAYBACK_WORKER = "https://init-stream.maasea.workers.dev/";
-const AD_RENDERER_FIELDS = new Set([
-  33561652,
-  33562350,
-  454362329,
-  478840678,
-  491441836
-]);
 const VIDEO_RENDERER_FIELD = 232954548;
 const PRODUCT_ATTACHMENT_FIELDS = new Set([33, 34]);
 const BROWSE_CONTAINER_FIELD = 49399797;
@@ -577,10 +570,6 @@ function isAdItem(bytes) {
 
   for (const candidate of candidates) {
     if (containsBytes(candidate, PAGEAD_TEXT)) return true;
-    const fields = tryParseMessage(candidate);
-    if (fields && fields.some((field) => AD_RENDERER_FIELDS.has(field.number))) {
-      return true;
-    }
   }
   return false;
 }

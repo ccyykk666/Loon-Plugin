@@ -22,7 +22,7 @@ response if ${FollowingTab} == false && ${url} ~= /^https:\/\/app\.bilibili\.com
 response if ${MessageTab} == false && ${url} ~= /^https:\/\/app\.bilibili\.com\/x\/resource\/show\/tab\/v2(?:\?.*)?$/ && ${response.status} == 200 then response.json.jq(".data.bottom |= map(select(.id != 3969))")
 
 # “我的”页：关闭创作入口、移除创作中心分区及会员推广栏
-response if ${url} ~= /^https:\/\/app\.bilibili\.com\/x\/v2\/account\/mine(?:\?.*)?$/ && ${response.status} == 200 then response.json.replace(["data.show_videoup", "data.show_creative", "data.use_modular_vip_section"], [0, 0, false]) | response.json.delete("data.modular_vip_section") | response.json.jq(".data.sections_v2 |= map(select(.title != \"创作中心\" and all(.items[]?; .id != 3991 and .id != 3992)))")
+response if ${url} ~= /^https:\/\/app\.bilibili\.com\/x\/v2\/account\/mine(?:\?.*)?$/ && ${response.status} == 200 then response.json.replace(["data.show_videoup", "data.show_creative"], [0, 0]) | response.json.delete("data.modular_vip_section") | response.json.jq(".data.sections_v2 |= map(select(.title != \"创作中心\" and all(.items[]?; .id != 3991 and .id != 3992)))")
 
 [Mitm]
 hostname = app.bilibili.com

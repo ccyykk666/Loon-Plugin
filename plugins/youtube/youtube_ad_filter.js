@@ -6,6 +6,7 @@ const PLAYBACK_CONFIG_KEY = "YouTubeConfig";
 const PLAYBACK_WORKER = "https://init-stream.maasea.workers.dev/";
 const VIDEO_RENDERER_FIELD = 232954548;
 const PRODUCT_ATTACHMENT_FIELDS = new Set([33, 34]);
+const PRODUCT_ATTACHMENT_PATH = [9, 2, 4];
 const BROWSE_CONTAINER_FIELD = 49399797;
 const SHORTS_SHELF_FIELD = 51845067;
 const LIST_FIELD = 50195462;
@@ -18,6 +19,7 @@ const SHORTS_TEXT = asciiBytes("Shorts");
 const PAGEAD_TEXT = asciiBytes("pagead");
 const VISIT_ADVERTISER_TEXT = asciiBytes("Visit advertiser");
 const PRODUCT_LOCATION_TEXT = asciiBytes("PRODUCT_LOCATION_");
+const SHOPPING_ASSET_TEXT = asciiBytes("gstatic.com/shopping");
 const PLAYER_PRODUCT_OVERLAY_TEXT = asciiBytes("player_overlay_product_in_video");
 const PRODUCT_PANEL_TEXT = asciiBytes("product_list_header.eml");
 
@@ -48,10 +50,17 @@ function rewriteResponse(path) {
 
   let result = { bytes: input, changed: false };
   if (path.endsWith("/browse") || path.endsWith("/next")) {
-    result = rewriteBrowseTree(input, 0, path.endsWith("/next"));
+    const removeProducts =
+      containsBytes(input, PRODUCT_LOCATION_TEXT) ||
+      containsBytes(input, SHOPPING_ASSET_TEXT);
+    result = rewriteBrowseTree(input, 0, removeProducts);
     if (path.endsWith("/next")) {
-      result = mergeResults(result, removeNextPlaybackAdMetadata(result.bytes));
-      result = mergeResults(result, removeNextProductOverlay(result.bytes));
+      if (containsBytes(result.bytes, VISIT_ADVERTISER_TEXT)) {
+        result = mergeResults(result, removeNextPlaybackAdMetadata(result.bytes));
+      }
+      if (containsBytes(result.bytes, PLAYER_PRODUCT_OVERLAY_TEXT)) {
+        result = mergeResults(result, removeNextProductOverlay(result.bytes));
+      }
     }
   } else if (path.endsWith("/player")) {
     result = removePlayerAds(input);
@@ -345,11 +354,17 @@ function asciiBytes(text) {
 
 function containsBytes(bytes, needle) {
   if (!needle.length || needle.length > bytes.length) return false;
-  outer: for (let index = 0; index <= bytes.length - needle.length; index++) {
-    for (let inner = 0; inner < needle.length; inner++) {
-      if (bytes[index + inner] !== needle[inner]) continue outer;
+  const lastStart = bytes.length - needle.length;
+  let index = 0;
+  while (index <= lastStart) {
+    index = bytes.indexOf(needle[0], index);
+    if (index < 0 || index > lastStart) return false;
+    let inner = 1;
+    while (inner < needle.length && bytes[index + inner] === needle[inner]) {
+      inner += 1;
     }
-    return true;
+    if (inner === needle.length) return true;
+    index += 1;
   }
   return false;
 }
@@ -415,7 +430,11 @@ function rewriteBrowseContainer(bytes, depth = 0, removeProducts = false) {
       continue;
     }
 
-    if (field.number === 1 && containsBytes(field.payload, PRODUCT_LOCATION_TEXT)) {
+    if (
+      removeProducts &&
+      field.number === 1 &&
+      containsBytes(field.payload, PRODUCT_LOCATION_TEXT)
+    ) {
       removed.add(index);
       removedProducts += 1;
       changed = true;
@@ -500,7 +519,7 @@ function filterAdList(bytes, removeProducts) {
       removedAds += 1;
       continue;
     }
-    if (removeProducts) {
+    if (removeProducts && containsBytes(field.payload, SHOPPING_ASSET_TEXT)) {
       const productResult = removeProductAttachments(field.payload);
       if (productResult.changed) {
         replacements.set(index, encodeField(field, productResult.bytes));
@@ -518,6 +537,17 @@ function filterAdList(bytes, removeProducts) {
 
 function removeProductAttachments(bytes) {
   return rewritePayloadPath(bytes, AD_ITEM_PATH, 0, removeProductRendererFields);
+}
+
+function hasPayloadAtPath(bytes, path, pathIndex = 0) {
+  const fields = tryParseMessage(bytes);
+  if (!fields) return false;
+  for (const field of fields) {
+    if (field.number !== path[pathIndex] || field.wireType !== 2) continue;
+    if (pathIndex + 1 === path.length) return true;
+    if (hasPayloadAtPath(field.payload, path, pathIndex + 1)) return true;
+  }
+  return false;
 }
 
 function rewritePayloadPath(bytes, path, pathIndex, transform) {
@@ -547,6 +577,13 @@ function removeProductRendererFields(bytes) {
     if (field.number !== VIDEO_RENDERER_FIELD || field.wireType !== 2) continue;
     const videoFields = tryParseMessage(field.payload);
     if (!videoFields) continue;
+    const hasProductCarousel = videoFields.some(
+      (videoField) =>
+        videoField.number === 33 &&
+        videoField.wireType === 2 &&
+        hasPayloadAtPath(videoField.payload, PRODUCT_ATTACHMENT_PATH)
+    );
+    if (!hasProductCarousel) continue;
     const removed = new Set();
     for (let videoIndex = 0; videoIndex < videoFields.length; videoIndex++) {
       if (PRODUCT_ATTACHMENT_FIELDS.has(videoFields[videoIndex].number)) {

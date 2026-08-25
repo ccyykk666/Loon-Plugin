@@ -393,14 +393,6 @@ if (!$response.body) {
       if (data?.floatingAssistant) delete data.floatingAssistant;
       if (obj?.shareData?.statusInfo) {
         obj.shareData.statusInfo.livewindow = false;
-        if (
-          Object.prototype.hasOwnProperty.call(
-            obj.shareData.statusInfo,
-            "askCommunityButton"
-          )
-        ) {
-          obj.shareData.statusInfo.askCommunityButton = false;
-        }
       }
 
       // 商品主图“AI 使用说明”及相关 AIGC 入口。
@@ -437,7 +429,6 @@ if (!$response.body) {
       // 商品详情页会员权益、赠礼、活动及社区种草等非核心推广楼层。
       const removeFloorIds = [
         "ActivityFloor",
-        "bpAskCommunity",
         "bpGiveGifts",
         "bpGjhs2",
         "bpdarenping14",
@@ -445,9 +436,7 @@ if (!$response.body) {
         "preferenceMore"
       ];
       obj.floors = obj.floors.filter(
-        (floor) =>
-          !removeFloorIds.includes(floor?.mId) &&
-          !removeFloorIds.includes(floor?.businessCode)
+        (floor) => !removeFloorIds.includes(floor?.mId)
       );
     }
   } else if (options.ProductClean && functionId === "queryEvaluateFloors") {

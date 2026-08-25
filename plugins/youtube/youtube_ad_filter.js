@@ -17,6 +17,9 @@ const SHORTS_SHELF_KEY = encodeVarint(SHORTS_SHELF_FIELD * 8 + 2);
 const SHORTS_TEXT = asciiBytes("Shorts");
 const PAGEAD_TEXT = asciiBytes("pagead");
 const VISIT_ADVERTISER_TEXT = asciiBytes("Visit advertiser");
+const PRODUCT_LOCATION_TEXT = asciiBytes("PRODUCT_LOCATION_");
+const PLAYER_PRODUCT_OVERLAY_TEXT = asciiBytes("player_overlay_product_in_video");
+const PRODUCT_PANEL_TEXT = asciiBytes("product_list_header.eml");
 
 let removedAds = 0;
 let removedShorts = 0;
@@ -48,11 +51,14 @@ function rewriteResponse(path) {
     result = rewriteBrowseTree(input, 0, path.endsWith("/next"));
     if (path.endsWith("/next")) {
       result = mergeResults(result, removeNextPlaybackAdMetadata(result.bytes));
+      result = mergeResults(result, removeNextProductOverlay(result.bytes));
     }
   } else if (path.endsWith("/player")) {
     result = removePlayerAds(input);
   } else if (path.endsWith("/get_watch")) {
     result = removeWatchAds(input);
+  } else if (path.endsWith("/get_panel")) {
+    result = removeProductPanel(input);
   }
 
   if (!result.changed) return $done({});
@@ -409,6 +415,13 @@ function rewriteBrowseContainer(bytes, depth = 0, removeProducts = false) {
       continue;
     }
 
+    if (field.number === 1 && containsBytes(field.payload, PRODUCT_LOCATION_TEXT)) {
+      removed.add(index);
+      removedProducts += 1;
+      changed = true;
+      continue;
+    }
+
     let payload = field.payload;
     if (field.number === 1) {
       const itemFields = tryParseMessage(payload);
@@ -589,6 +602,52 @@ function removeNextPlaybackAdMetadata(bytes) {
     ) {
       removed.add(index);
       removedAds += 1;
+    }
+  }
+  return {
+    bytes: removed.size ? rebuildMessage(fields, null, removed) : bytes,
+    changed: removed.size > 0
+  };
+}
+
+function removeNextProductOverlay(bytes) {
+  return rewritePayloadPath(bytes, [14, 78882851], 0, removeProductOverlayField);
+}
+
+function removeProductOverlayField(bytes) {
+  const fields = tryParseMessage(bytes);
+  if (!fields) return { bytes, changed: false };
+  const removed = new Set();
+  for (let index = 0; index < fields.length; index++) {
+    const field = fields[index];
+    if (
+      field.number === 42 &&
+      field.wireType === 2 &&
+      containsBytes(field.payload, PLAYER_PRODUCT_OVERLAY_TEXT)
+    ) {
+      removed.add(index);
+      removedProducts += 1;
+    }
+  }
+  return {
+    bytes: removed.size ? rebuildMessage(fields, null, removed) : bytes,
+    changed: removed.size > 0
+  };
+}
+
+function removeProductPanel(bytes) {
+  const fields = tryParseMessage(bytes);
+  if (!fields) return { bytes, changed: false };
+  const removed = new Set();
+  for (let index = 0; index < fields.length; index++) {
+    const field = fields[index];
+    if (
+      field.number === 2 &&
+      field.wireType === 2 &&
+      containsBytes(field.payload, PRODUCT_PANEL_TEXT)
+    ) {
+      removed.add(index);
+      removedProducts += 1;
     }
   }
   return {

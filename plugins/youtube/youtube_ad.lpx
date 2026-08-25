@@ -11,7 +11,7 @@ HideShorts=switch, true, tag=1. 隐藏首页 Shorts, desc=移除首页信息流�
 
 [Script]
 # 页面广告、Shorts 与播放密钥响应使用同一个精简脚本
-http-response ^https:\/\/youtubei\.googleapis\.com\/youtubei\/v1\/(?:browse|next|player|get_watch|config|log_event)(?:\?.*)?$ script-path=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/youtube/youtube_ad_filter.js, requires-body=true, binary-body-mode=true, timeout=20, argument=[{HideShorts}], tag=YouTube响应净化
+http-response ^https:\/\/youtubei\.googleapis\.com\/youtubei\/v1\/(?:browse|next|player|get_watch|get_panel|config|log_event)(?:\?.*)?$ script-path=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/youtube/youtube_ad_filter.js, requires-body=true, binary-body-mode=true, timeout=20, argument=[{HideShorts}], tag=YouTube响应净化
 http-request ^https:\/\/youtubei\.googleapis\.com\/youtubei\/v1\/log_event(?:\?.*)?$ script-path=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/youtube/youtube_ad_filter.js, requires-body=true, binary-body-mode=true, timeout=20, tag=YouTube播放密钥请求
 http-request ^https?:\/\/[\w-]+\.googlevideo\.com\/initplayback\?(?=[^#]*&ack(?:=|&|$))[^#]*$ script-path=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/youtube/youtube_ad_filter.js, requires-body=true, binary-body-mode=true, timeout=20, tag=YouTube播放贴片去广告
 

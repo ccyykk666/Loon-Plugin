@@ -6,7 +6,6 @@
 | 中国移动 | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/china-mobile/china_mobile_ad.plugin) |
 | 到梦空间 | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/dmkj/dmkj_ad.plugin) |
 | 豆瓣 | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/douban/douban_ad.lpx) |
-| 小红书 | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/xiaohongshu/xiaohongshu_ad.lpx) |
 | 闲鱼 | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/goofish/goofish_ad.lpx) |
 | 京东 | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/jingdong/Jingdong_remove_ads.lpx) |
 | Keep | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/keep/keep_ad.lpx) |

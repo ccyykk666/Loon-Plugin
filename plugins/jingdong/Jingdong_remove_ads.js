@@ -378,12 +378,6 @@ if (!$response.body) {
   ) {
     // 商品页右上角自动出现的小视频窗口。
     if (obj?.result?.contents?.length > 0) obj.result.contents = [];
-  } else if (
-    options.ProductClean &&
-    functionId === "aigc_guide"
-  ) {
-    // 商品主图 AI 使用说明的独立引导接口。
-    if (obj?.data && typeof obj.data === "object") obj.data = {};
   } else if (options.ProductClean && functionId === "wareBusiness") {
     if (options.ProductClean) {
       // “直播讲解”和“红包雨”共用 liveInfo 浮层数据。
@@ -395,43 +389,19 @@ if (!$response.body) {
         obj.shareData.statusInfo.livewindow = false;
       }
 
-      // 商品主图“AI 使用说明”及相关 AIGC 入口。
-      if (data) {
-        for (const key of [
-          "aigcFlag",
-          "aigcFlagV2",
-          "aigcFloorId",
-          "aigcBizInfo"
-        ]) {
-          if (Object.prototype.hasOwnProperty.call(data, key)) delete data[key];
-        }
-        if (data?.daJiaPing?.floorQoList?.length > 0) {
-          for (let item of data.daJiaPing.floorQoList) {
-            if (Object.prototype.hasOwnProperty.call(item, "aiOverview")) {
-              item.aiOverview = "0";
-            }
+      // “大家评”中的 AI 评价概要，不影响商品主图的 AI 使用说明。
+      if (data?.daJiaPing?.floorQoList?.length > 0) {
+        for (let item of data.daJiaPing.floorQoList) {
+          if (Object.prototype.hasOwnProperty.call(item, "aiOverview")) {
+            item.aiOverview = "0";
           }
         }
       }
+    }
 
-      const cleanMainPicAigcMarkers = (node) => {
-        if (!node || typeof node !== "object") return;
-        for (const key of Object.keys(node)) {
-          if (/aigc/i.test(key)) {
-            delete node[key];
-          } else {
-            cleanMainPicAigcMarkers(node[key]);
-          }
-        }
-      };
-      for (let floor of obj?.floors || []) {
-        if (
-          floor?.mId === "bpMainImage" ||
-          floor?.businessCode === "bpMainImage"
-        ) {
-          cleanMainPicAigcMarkers(floor.data);
-        }
-      }
+    if (options.ProductClean && obj?.floors?.length > 0) {
+      // “为你推荐”和“潮流配件馆”同属 bpyxlc14 融合楼层。
+      obj.floors = obj.floors.filter((floor) => floor?.mId !== "bpyxlc14");
     }
 
     if (obj?.floors?.length > 0) {

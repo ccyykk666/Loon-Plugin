@@ -10,7 +10,7 @@
 HomeClean=switch, true, tag=1. 首页净化, desc=净化首页、新品页及搜索推广，包括浮层、动图、下拉二楼、活动板块、多余 Tab、商业热词和搜索结果 AI 推荐卡
 OrderAds=switch, true, tag=2. 订单与物流, desc=移除订单推广、订单卡片“一键评分/全屋保障”、评价晒单券标、物流地图优惠卡、轨迹卡权益条、物流猜你喜欢及“秒送/服务”图片角标，并尝试关闭礼物入口
 ProfileClean=switch, true, tag=3. 我的与设置, desc=净化“我的”页、个人档案和设置页推广，包括活动推荐、档案横幅/资讯流及“必备工具”
-ProductClean=switch, true, tag=4. 商品页净化, desc=移除小视频浮窗、活动小助手、直播讲解、红包雨、AI 使用说明及会员权益、赠礼、高价回收、活动、社区种草等非核心楼层
+ProductClean=switch, true, tag=4. 商品页净化, desc=移除小视频浮窗、活动小助手、直播讲解、红包雨、推荐/配件馆及会员权益、赠礼、高价回收、活动、社区种草等非核心楼层
 
 [Rule]
 AND, ((DOMAIN, api.m.jd.com), (PROTOCOL, TCP)), REJECT-NO-DROP
@@ -31,7 +31,7 @@ response if ${ProfileClean} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/(?
 
 [Script]
 # 京东页面响应净化，兼容 functionId 位于任意查询参数位置
-http-response ^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=(?:aigc_guide|clickRecommend|deliverLayer|hotSearchTerms|myOrderInfo|myjdSetBusiness|newUserAllOrderList|orderTrackBusiness|personinfoBusiness|queryEvaluateFloors|queryFloorDetailInfo|queryListAsyncInfo|querySmallVideoWindow|start|uniformRecommend|uniformRecommend6|wareBusiness|welcomeHome)(?:&|$) script-path=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/jingdong/Jingdong_remove_ads.js, requires-body=true, timeout=20, argument=[{HomeClean},{OrderAds},{ProfileClean},{ProductClean}], tag=jingdong_noad
+http-response ^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=(?:clickRecommend|deliverLayer|hotSearchTerms|myOrderInfo|myjdSetBusiness|newUserAllOrderList|orderTrackBusiness|personinfoBusiness|queryEvaluateFloors|queryFloorDetailInfo|queryListAsyncInfo|querySmallVideoWindow|start|uniformRecommend|uniformRecommend6|wareBusiness|welcomeHome)(?:&|$) script-path=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/jingdong/Jingdong_remove_ads.js, requires-body=true, timeout=20, argument=[{HomeClean},{OrderAds},{ProfileClean},{ProductClean}], tag=jingdong_noad
 # 个人档案资讯流兼容 /api 和 /client.action 两种路径
 http-response ^https:\/\/api\.m\.jd\.com\/(?:api|client\.action)\?(?:[^#]*&)?functionId=queryCircleInfo(?:&|$) script-path=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/jingdong/Jingdong_remove_ads.js, requires-body=true, timeout=20, argument=[{ProfileClean}], tag=jingdong_profile_detail_noad
 

@@ -402,14 +402,6 @@ if (!$response.body) {
       }
       if (obj?.shareData?.statusInfo) {
         obj.shareData.statusInfo.livewindow = false;
-        if (
-          Object.prototype.hasOwnProperty.call(
-            obj.shareData.statusInfo,
-            "recommendPromoFloor"
-          )
-        ) {
-          obj.shareData.statusInfo.recommendPromoFloor = false;
-        }
       }
 
       // “大家评”中的 AI 评价概要，不影响商品主图的 AI 使用说明。
@@ -468,6 +460,11 @@ if (!$response.body) {
     // 购物车 source=6 推荐商品流。
     clearRecommendResponse(obj);
   } else if (functionId === "uniformRecommend") {
+    const isProductDetailRecommend =
+      options.ProductClean &&
+      requestRefererPage === "WareInfoViewController" &&
+      String(obj?.adIds || "") === "4563" &&
+      Array.isArray(obj?.reasonFloorWareInfos);
     const isOrderRecommend =
       requestContext.includes("JDOrderTest_p_detail") ||
       requestContext.includes("JDOrderTest_p_orderlist") ||
@@ -488,6 +485,11 @@ if (!$response.body) {
       isMessageRecommend
     ) {
       clearRecommendResponse(obj);
+    }
+    if (isProductDetailRecommend) {
+      // 删除商品页尾部推荐楼层模型，避免空数组触发“没有商品”。
+      delete obj.reasonFloorWareInfos;
+      obj.adIds = "";
     }
   }
 

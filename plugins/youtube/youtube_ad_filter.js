@@ -2,12 +2,22 @@ const FILTER_OPTIONS = {
   hideShorts: readBooleanArgument("HideShorts", true)
 };
 
-const AD_RENDERER_FIELDS = new Set([454362329, 478840678, 491441836]);
+const PLAYBACK_CONFIG_KEY = "YouTubeConfig";
+const PLAYBACK_WORKER = "https://init-stream.maasea.workers.dev/";
+const AD_RENDERER_FIELDS = new Set([
+  33561652,
+  454362329,
+  478840678,
+  491441836
+]);
 const BROWSE_CONTAINER_FIELD = 49399797;
 const SHORTS_SHELF_FIELD = 51845067;
 const LIST_FIELD = 50195462;
 const AD_ITEM_PATH = [153515154, 172660663, 1, 168777401, 5];
 const BROWSE_CONTAINER_KEY = encodeVarint(BROWSE_CONTAINER_FIELD * 8 + 2);
+const AD_ITEM_ROOT_KEY = encodeVarint(AD_ITEM_PATH[0] * 8 + 2);
+const LIST_FIELD_KEY = encodeVarint(LIST_FIELD * 8 + 2);
+const SHORTS_SHELF_KEY = encodeVarint(SHORTS_SHELF_FIELD * 8 + 2);
 const SHORTS_TEXT = asciiBytes("Shorts");
 const VISIT_ADVERTISER_TEXT = asciiBytes("Visit advertiser");
 
@@ -15,35 +25,46 @@ let removedAds = 0;
 let removedShorts = 0;
 
 try {
-  const input = normalizeBody($response.body);
-  if (!input.length) {
-    $done({});
+  const path = requestPath($request.url);
+  if (typeof $response === "undefined") {
+    rewritePlaybackRequest(path);
   } else {
-    const path = requestPath($request.url);
-    let result = { bytes: input, changed: false };
-
-    if (path.endsWith("/browse") || path.endsWith("/next")) {
-      result = rewriteBrowseTree(input, 0);
-      if (path.endsWith("/next")) {
-        result = mergeResults(result, removeNextPlaybackAdMetadata(result.bytes));
-      }
-    } else if (path.endsWith("/player")) {
-      result = removePlayerAds(input);
-    } else if (path.endsWith("/get_watch")) {
-      result = removeWatchAds(input);
-    }
-
-    if (result.changed) {
-      console.log(
-        `YouTube净化完成: ads=${removedAds}, shorts=${removedShorts}`
-      );
-      $done({ body: result.bytes });
-    } else {
-      $done({});
-    }
+    rewriteResponse(path);
   }
 } catch (error) {
-  console.log(`YouTube净化失败，放行原响应: ${error}`);
+  console.log(`YouTube净化失败，放行原请求或响应: ${error}`);
+  $done({});
+}
+
+function rewriteResponse(path) {
+  const input = normalizeBody($response.body);
+  if (!input.length) return $done({});
+
+  if (path.endsWith("/config") || path.endsWith("/log_event")) {
+    savePlaybackKeys(input);
+    return $done({});
+  }
+
+  let result = { bytes: input, changed: false };
+  if (path.endsWith("/browse") || path.endsWith("/next")) {
+    result = rewriteBrowseTree(input, 0);
+    if (path.endsWith("/next")) {
+      result = mergeResults(result, removeNextPlaybackAdMetadata(result.bytes));
+    }
+  } else if (path.endsWith("/player")) {
+    result = removePlayerAds(input);
+  } else if (path.endsWith("/get_watch")) {
+    result = removeWatchAds(input);
+  }
+
+  if (!result.changed) return $done({});
+  console.log(`YouTube净化完成: ads=${removedAds}, shorts=${removedShorts}`);
+  $done({ body: result.bytes });
+}
+
+function rewritePlaybackRequest(path) {
+  if (path.endsWith("/log_event")) return preparePlaybackKeyRequest();
+  if (path.endsWith("/initplayback")) return redirectInitPlayback();
   $done({});
 }
 
@@ -66,6 +87,158 @@ function normalizeBody(body) {
     return new Uint8Array(body.buffer, body.byteOffset || 0, body.byteLength);
   }
   return new Uint8Array();
+}
+
+function playbackPlatformKey() {
+  const headers = ($request && $request.headers) || {};
+  const userAgent = headers["user-agent"] || headers["User-Agent"] || "";
+  return String(userAgent).includes("music") ? "youtubeMusic" : "youtube";
+}
+
+function readPlaybackConfig() {
+  const raw = $persistentStore.read(PLAYBACK_CONFIG_KEY);
+  if (!raw) return {};
+  try {
+    const value = JSON.parse(raw);
+    return value && typeof value === "object" ? value : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function writePlaybackConfig(config) {
+  $persistentStore.write(JSON.stringify(config), PLAYBACK_CONFIG_KEY);
+}
+
+function savePlaybackKeys(bytes) {
+  const messages = payloadsAtPath(bytes, [1, 16, 7, 138536474, 146311580]);
+  for (const message of messages) {
+    const fields = tryParseMessage(message);
+    if (!fields) continue;
+    const clientKey = fields.find((field) => field.number === 1 && field.wireType === 2);
+    const encryptKey = fields.find((field) => field.number === 2 && field.wireType === 2);
+    if (!clientKey || !encryptKey || !clientKey.payload.length || !encryptKey.payload.length) {
+      continue;
+    }
+    const config = readPlaybackConfig();
+    config[playbackPlatformKey()] = {
+      clientKey: encodeBase64(clientKey.payload),
+      encryptKey: encodeBase64(encryptKey.payload)
+    };
+    writePlaybackConfig(config);
+    console.log("YouTube播放密钥已更新");
+    return;
+  }
+}
+
+function preparePlaybackKeyRequest() {
+  const config = readPlaybackConfig();
+  const hasKey = Boolean(config[playbackPlatformKey()]?.clientKey);
+  const headers = { ...(($request && $request.headers) || {}) };
+  for (const name of Object.keys(headers)) {
+    const lower = name.toLowerCase();
+    if (lower === "content-encoding" || (!hasKey && lower === "x-youtube-hot-hash-data")) {
+      delete headers[name];
+    }
+  }
+  $done({ headers });
+}
+
+function redirectInitPlayback() {
+  const platform = playbackPlatformKey();
+  const config = readPlaybackConfig();
+  const keys = config[platform];
+  const body = normalizeBody($request.body);
+  const encryptedClientKeys = payloadsAtPath(body, [3, 5]);
+  if (
+    keys?.clientKey &&
+    keys?.encryptKey &&
+    encryptedClientKeys.some((value) => equalBytes(value, decodeBase64(keys.encryptKey)))
+  ) {
+    const params = {
+      ck: keys.clientKey,
+      target: $request.url,
+      captionLang: "off",
+      blockUpload: false,
+      blockImmersive: false,
+      blockShorts: false
+    };
+    const query = Object.keys(params)
+      .map((name) => `${name}=${encodeURIComponent(String(params[name]))}`)
+      .join("&");
+    return $done({ url: `${PLAYBACK_WORKER}?${query}` });
+  }
+
+  if (config[platform]) {
+    delete config[platform];
+    writePlaybackConfig(config);
+  }
+  $done({
+    response: {
+      status: 200,
+      headers: { "Content-Type": "text/plain" },
+      body: new Uint8Array()
+    }
+  });
+}
+
+function payloadsAtPath(bytes, path) {
+  let candidates = [bytes];
+  for (const number of path) {
+    const next = [];
+    for (const candidate of candidates) {
+      const fields = tryParseMessage(candidate);
+      if (!fields) continue;
+      for (const field of fields) {
+        if (field.number === number && field.wireType === 2) next.push(field.payload);
+      }
+    }
+    if (!next.length) return [];
+    candidates = next;
+  }
+  return candidates;
+}
+
+function equalBytes(left, right) {
+  if (left.length !== right.length) return false;
+  for (let index = 0; index < left.length; index++) {
+    if (left[index] !== right[index]) return false;
+  }
+  return true;
+}
+
+function encodeBase64(bytes) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  let output = "";
+  for (let index = 0; index < bytes.length; index += 3) {
+    const first = bytes[index];
+    const second = index + 1 < bytes.length ? bytes[index + 1] : 0;
+    const third = index + 2 < bytes.length ? bytes[index + 2] : 0;
+    output += alphabet[first >> 2];
+    output += alphabet[((first & 3) << 4) | (second >> 4)];
+    output += index + 1 < bytes.length ? alphabet[((second & 15) << 2) | (third >> 6)] : "=";
+    output += index + 2 < bytes.length ? alphabet[third & 63] : "=";
+  }
+  return output;
+}
+
+function decodeBase64(text) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const clean = String(text || "").replace(/[^A-Za-z0-9+/]/g, "");
+  const output = [];
+  let bits = 0;
+  let bitCount = 0;
+  for (const character of clean) {
+    const value = alphabet.indexOf(character);
+    if (value < 0) continue;
+    bits = (bits << 6) | value;
+    bitCount += 6;
+    if (bitCount >= 8) {
+      bitCount -= 8;
+      output.push((bits >> bitCount) & 255);
+    }
+  }
+  return new Uint8Array(output);
 }
 
 function readVarint(bytes, start, end) {
@@ -219,7 +392,7 @@ function rewriteBrowseTree(bytes, depth) {
   };
 }
 
-function rewriteBrowseContainer(bytes) {
+function rewriteBrowseContainer(bytes, depth = 0) {
   const fields = parseMessage(bytes);
   const replacements = new Map();
   const removed = new Set();
@@ -227,38 +400,55 @@ function rewriteBrowseContainer(bytes) {
 
   for (let index = 0; index < fields.length; index++) {
     const field = fields[index];
-    if (field.number !== 1 || field.wireType !== 2) continue;
-    const itemFields = tryParseMessage(field.payload);
-    if (!itemFields) continue;
+    if (field.wireType !== 2) continue;
 
-    if (
-      FILTER_OPTIONS.hideShorts &&
-      itemFields.some(
-        (itemField) =>
-          itemField.number === SHORTS_SHELF_FIELD &&
-          itemField.wireType === 2 &&
-          containsBytes(itemField.payload, SHORTS_TEXT)
-      )
-    ) {
+    if (field.number === 1 && isAdItem(field.payload)) {
       removed.add(index);
-      removedShorts += 1;
+      removedAds += 1;
       changed = true;
       continue;
     }
 
-    const itemReplacements = new Map();
-    let itemChanged = false;
-    for (let itemIndex = 0; itemIndex < itemFields.length; itemIndex++) {
-      const itemField = itemFields[itemIndex];
-      if (itemField.number !== LIST_FIELD || itemField.wireType !== 2) continue;
-      const listResult = filterAdList(itemField.payload);
-      if (!listResult.changed) continue;
-      itemReplacements.set(itemIndex, encodeField(itemField, listResult.bytes));
-      itemChanged = true;
+    let payload = field.payload;
+    if (field.number === 1) {
+      const itemFields = tryParseMessage(payload);
+      if (itemFields) {
+        if (
+          FILTER_OPTIONS.hideShorts &&
+          itemFields.some(
+            (itemField) =>
+              itemField.number === SHORTS_SHELF_FIELD &&
+              itemField.wireType === 2 &&
+              containsBytes(itemField.payload, SHORTS_TEXT)
+          )
+        ) {
+          removed.add(index);
+          removedShorts += 1;
+          changed = true;
+          continue;
+        }
+
+        const itemReplacements = new Map();
+        for (let itemIndex = 0; itemIndex < itemFields.length; itemIndex++) {
+          const itemField = itemFields[itemIndex];
+          if (itemField.number !== LIST_FIELD || itemField.wireType !== 2) continue;
+          const listResult = filterAdList(itemField.payload);
+          if (!listResult.changed) continue;
+          itemReplacements.set(itemIndex, encodeField(itemField, listResult.bytes));
+        }
+        if (itemReplacements.size) {
+          payload = rebuildMessage(itemFields, itemReplacements);
+        }
+      }
     }
-    if (itemChanged) {
-      const itemBytes = rebuildMessage(itemFields, itemReplacements);
-      replacements.set(index, encodeField(field, itemBytes));
+
+    if (depth < 10 && containsBrowseItem(payload)) {
+      const nested = tryRewriteBrowseContainer(payload, depth + 1);
+      if (nested.changed) payload = nested.bytes;
+    }
+
+    if (payload !== field.payload) {
+      replacements.set(index, encodeField(field, payload));
       changed = true;
     }
   }
@@ -267,6 +457,22 @@ function rewriteBrowseContainer(bytes) {
     bytes: changed ? rebuildMessage(fields, replacements, removed) : bytes,
     changed
   };
+}
+
+function containsBrowseItem(bytes) {
+  return (
+    containsBytes(bytes, AD_ITEM_ROOT_KEY) ||
+    containsBytes(bytes, LIST_FIELD_KEY) ||
+    (FILTER_OPTIONS.hideShorts && containsBytes(bytes, SHORTS_SHELF_KEY))
+  );
+}
+
+function tryRewriteBrowseContainer(bytes, depth) {
+  try {
+    return rewriteBrowseContainer(bytes, depth);
+  } catch (_) {
+    return { bytes, changed: false };
+  }
 }
 
 function filterAdList(bytes) {

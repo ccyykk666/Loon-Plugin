@@ -1,5 +1,5 @@
 #!name=YouTube去广告
-#!desc=移除YouTube首页与视频页广告，并支持开关控制首页Shorts板块
+#!desc=移除Youtube广告
 #!author=ccyykk666[https://github.com/ccyykk666], Maasea[https://github.com/Maasea]
 #!system=iOS, iPadOS
 #!loon_version=3.5.1(978)
@@ -8,16 +8,13 @@
 
 [Argument]
 HideShorts=switch, true, tag=1. 隐藏首页 Shorts, desc=移除首页信息流中的 Shorts 板块；关闭后保留 Shorts
-PlaybackAds=switch, false, tag=2. 去除播放贴片广告, desc=处理新版加密 UMP 播放流；启用后会把播放 URL 与临时播放密钥发送给 Maasea Worker，不发送账号 Cookie
+PlaybackAds=switch, true, tag=2. 去除播放贴片广告, desc=处理新版加密 UMP 播放流；启用后会把播放 URL 与临时播放密钥发送给 Maasea Worker，不发送账号 Cookie
 
 [Script]
-# 首页与视频页推广卡、Shorts 板块及传统 player 广告字段
-http-response ^https:\/\/youtubei\.googleapis\.com\/youtubei\/v1\/(?:browse|next|player|get_watch)(?:\?.*)?$ script-path=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/youtube/youtube_ad_filter.js, requires-body=true, binary-body-mode=true, timeout=20, argument=[{HideShorts}], tag=YouTube页面去广告
-# 新版加密 UMP 播放流的临时密钥维护；固定到已审阅的上游提交
-http-response ^https:\/\/youtubei\.googleapis\.com\/youtubei\/v1\/(?:config|log_event)(?:\?.*)?$ script-path=https://raw.githubusercontent.com/Maasea/sgmodule/65075cdb388fc5e3094afd7e7314c67b243f3525/Script/Youtube/youtube.response.js, requires-body=true, binary-body-mode=true, timeout=20, tag=YouTube播放密钥响应
-http-request ^https:\/\/youtubei\.googleapis\.com\/youtubei\/v1\/log_event(?:\?.*)?$ script-path=https://raw.githubusercontent.com/Maasea/sgmodule/65075cdb388fc5e3094afd7e7314c67b243f3525/Script/Youtube/youtube.request.js, requires-body=true, binary-body-mode=true, timeout=20, tag=YouTube播放密钥请求
-# 仅在用户主动开启 PlaybackAds 后调用 Maasea Worker 处理 initplayback
-http-request ^https?:\/\/[\w-]+\.googlevideo\.com\/initplayback\?(?=[^#]*&ack(?:=|&|$))[^#]*$ script-path=https://raw.githubusercontent.com/Maasea/sgmodule/65075cdb388fc5e3094afd7e7314c67b243f3525/Script/Youtube/youtube.request.js, requires-body=true, binary-body-mode=true, timeout=20, enable={PlaybackAds}, tag=YouTube播放贴片去广告
+# 页面广告、Shorts 与播放密钥响应使用同一个精简脚本
+http-response ^https:\/\/youtubei\.googleapis\.com\/youtubei\/v1\/(?:browse|next|player|get_watch|config|log_event)(?:\?.*)?$ script-path=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/youtube/youtube_ad_filter.js, requires-body=true, binary-body-mode=true, timeout=20, argument=[{HideShorts}], tag=YouTube响应净化
+http-request ^https:\/\/youtubei\.googleapis\.com\/youtubei\/v1\/log_event(?:\?.*)?$ script-path=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/youtube/youtube_ad_filter.js, requires-body=true, binary-body-mode=true, timeout=20, tag=YouTube播放密钥请求
+http-request ^https?:\/\/[\w-]+\.googlevideo\.com\/initplayback\?(?=[^#]*&ack(?:=|&|$))[^#]*$ script-path=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/youtube/youtube_ad_filter.js, requires-body=true, binary-body-mode=true, timeout=20, enable={PlaybackAds}, tag=YouTube播放贴片去广告
 
 [MITM]
 hostname = youtubei.googleapis.com, *.googlevideo.com

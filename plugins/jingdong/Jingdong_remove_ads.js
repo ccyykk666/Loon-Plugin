@@ -382,8 +382,8 @@ if (!$response.body) {
     options.ProductClean &&
     functionId === "aigc_guide"
   ) {
-    // 商品详情页右侧“京言”浮动入口；保留主图“AI 使用说明”。
-    if (obj?.data && typeof obj.data === "object") obj.data = {};
+    // 商品详情页右下角 AI 浮动入口。
+    obj.data = {};
   } else if (options.ProductClean && functionId === "wareBusiness") {
     if (options.ProductClean) {
       // “直播讲解”和“红包雨”共用 liveInfo 浮层数据。

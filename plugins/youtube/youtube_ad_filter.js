@@ -6,10 +6,13 @@ const PLAYBACK_CONFIG_KEY = "YouTubeConfig";
 const PLAYBACK_WORKER = "https://init-stream.maasea.workers.dev/";
 const AD_RENDERER_FIELDS = new Set([
   33561652,
+  33562350,
   454362329,
   478840678,
   491441836
 ]);
+const VIDEO_RENDERER_FIELD = 232954548;
+const PRODUCT_ATTACHMENT_FIELDS = new Set([33, 34]);
 const BROWSE_CONTAINER_FIELD = 49399797;
 const SHORTS_SHELF_FIELD = 51845067;
 const LIST_FIELD = 50195462;
@@ -19,10 +22,12 @@ const AD_ITEM_ROOT_KEY = encodeVarint(AD_ITEM_PATH[0] * 8 + 2);
 const LIST_FIELD_KEY = encodeVarint(LIST_FIELD * 8 + 2);
 const SHORTS_SHELF_KEY = encodeVarint(SHORTS_SHELF_FIELD * 8 + 2);
 const SHORTS_TEXT = asciiBytes("Shorts");
+const PAGEAD_TEXT = asciiBytes("pagead");
 const VISIT_ADVERTISER_TEXT = asciiBytes("Visit advertiser");
 
 let removedAds = 0;
 let removedShorts = 0;
+let removedProducts = 0;
 
 try {
   const path = requestPath($request.url);
@@ -47,7 +52,7 @@ function rewriteResponse(path) {
 
   let result = { bytes: input, changed: false };
   if (path.endsWith("/browse") || path.endsWith("/next")) {
-    result = rewriteBrowseTree(input, 0);
+    result = rewriteBrowseTree(input, 0, path.endsWith("/next"));
     if (path.endsWith("/next")) {
       result = mergeResults(result, removeNextPlaybackAdMetadata(result.bytes));
     }
@@ -58,7 +63,9 @@ function rewriteResponse(path) {
   }
 
   if (!result.changed) return $done({});
-  console.log(`YouTube净化完成: ads=${removedAds}, shorts=${removedShorts}`);
+  console.log(
+    `YouTube净化完成: ads=${removedAds}, shorts=${removedShorts}, products=${removedProducts}`
+  );
   $done({ body: result.bytes });
 }
 
@@ -357,7 +364,7 @@ function rebuildMessage(fields, replacements, removedIndexes) {
   return concatBytes(chunks);
 }
 
-function rewriteBrowseTree(bytes, depth) {
+function rewriteBrowseTree(bytes, depth, removeProducts) {
   if (depth > 18 || !containsBytes(bytes, BROWSE_CONTAINER_KEY)) {
     return { bytes, changed: false };
   }
@@ -375,9 +382,9 @@ function rewriteBrowseTree(bytes, depth) {
     if (field.wireType !== 2) continue;
     let child;
     if (field.number === BROWSE_CONTAINER_FIELD) {
-      child = rewriteBrowseContainer(field.payload);
+      child = rewriteBrowseContainer(field.payload, 0, removeProducts);
     } else if (containsBytes(field.payload, BROWSE_CONTAINER_KEY)) {
-      child = rewriteBrowseTree(field.payload, depth + 1);
+      child = rewriteBrowseTree(field.payload, depth + 1, removeProducts);
     } else {
       continue;
     }
@@ -392,7 +399,7 @@ function rewriteBrowseTree(bytes, depth) {
   };
 }
 
-function rewriteBrowseContainer(bytes, depth = 0) {
+function rewriteBrowseContainer(bytes, depth = 0, removeProducts = false) {
   const fields = parseMessage(bytes);
   const replacements = new Map();
   const removed = new Set();
@@ -432,7 +439,7 @@ function rewriteBrowseContainer(bytes, depth = 0) {
         for (let itemIndex = 0; itemIndex < itemFields.length; itemIndex++) {
           const itemField = itemFields[itemIndex];
           if (itemField.number !== LIST_FIELD || itemField.wireType !== 2) continue;
-          const listResult = filterAdList(itemField.payload);
+          const listResult = filterAdList(itemField.payload, removeProducts);
           if (!listResult.changed) continue;
           itemReplacements.set(itemIndex, encodeField(itemField, listResult.bytes));
         }
@@ -443,7 +450,7 @@ function rewriteBrowseContainer(bytes, depth = 0) {
     }
 
     if (depth < 10 && containsBrowseItem(payload)) {
-      const nested = tryRewriteBrowseContainer(payload, depth + 1);
+      const nested = tryRewriteBrowseContainer(payload, depth + 1, removeProducts);
       if (nested.changed) payload = nested.bytes;
     }
 
@@ -467,27 +474,89 @@ function containsBrowseItem(bytes) {
   );
 }
 
-function tryRewriteBrowseContainer(bytes, depth) {
+function tryRewriteBrowseContainer(bytes, depth, removeProducts) {
   try {
-    return rewriteBrowseContainer(bytes, depth);
+    return rewriteBrowseContainer(bytes, depth, removeProducts);
   } catch (_) {
     return { bytes, changed: false };
   }
 }
 
-function filterAdList(bytes) {
+function filterAdList(bytes, removeProducts) {
   const fields = parseMessage(bytes);
+  const replacements = new Map();
   const removed = new Set();
   for (let index = 0; index < fields.length; index++) {
     const field = fields[index];
     if (field.number !== 1 || field.wireType !== 2) continue;
-    if (!isAdItem(field.payload)) continue;
-    removed.add(index);
-    removedAds += 1;
+    if (isAdItem(field.payload)) {
+      removed.add(index);
+      removedAds += 1;
+      continue;
+    }
+    if (removeProducts) {
+      const productResult = removeProductAttachments(field.payload);
+      if (productResult.changed) {
+        replacements.set(index, encodeField(field, productResult.bytes));
+      }
+    }
   }
   return {
-    bytes: removed.size ? rebuildMessage(fields, null, removed) : bytes,
-    changed: removed.size > 0
+    bytes:
+      removed.size || replacements.size
+        ? rebuildMessage(fields, replacements, removed)
+        : bytes,
+    changed: removed.size > 0 || replacements.size > 0
+  };
+}
+
+function removeProductAttachments(bytes) {
+  return rewritePayloadPath(bytes, AD_ITEM_PATH, 0, removeProductRendererFields);
+}
+
+function rewritePayloadPath(bytes, path, pathIndex, transform) {
+  if (pathIndex === path.length) return transform(bytes);
+  const fields = tryParseMessage(bytes);
+  if (!fields) return { bytes, changed: false };
+  const replacements = new Map();
+  for (let index = 0; index < fields.length; index++) {
+    const field = fields[index];
+    if (field.number !== path[pathIndex] || field.wireType !== 2) continue;
+    const result = rewritePayloadPath(field.payload, path, pathIndex + 1, transform);
+    if (!result.changed) continue;
+    replacements.set(index, encodeField(field, result.bytes));
+  }
+  return {
+    bytes: replacements.size ? rebuildMessage(fields, replacements) : bytes,
+    changed: replacements.size > 0
+  };
+}
+
+function removeProductRendererFields(bytes) {
+  const fields = tryParseMessage(bytes);
+  if (!fields) return { bytes, changed: false };
+  const replacements = new Map();
+  for (let index = 0; index < fields.length; index++) {
+    const field = fields[index];
+    if (field.number !== VIDEO_RENDERER_FIELD || field.wireType !== 2) continue;
+    const videoFields = tryParseMessage(field.payload);
+    if (!videoFields) continue;
+    const removed = new Set();
+    for (let videoIndex = 0; videoIndex < videoFields.length; videoIndex++) {
+      if (PRODUCT_ATTACHMENT_FIELDS.has(videoFields[videoIndex].number)) {
+        removed.add(videoIndex);
+      }
+    }
+    if (!removed.size) continue;
+    removedProducts += 1;
+    replacements.set(
+      index,
+      encodeField(field, rebuildMessage(videoFields, null, removed))
+    );
+  }
+  return {
+    bytes: replacements.size ? rebuildMessage(fields, replacements) : bytes,
+    changed: replacements.size > 0
   };
 }
 
@@ -507,6 +576,7 @@ function isAdItem(bytes) {
   }
 
   for (const candidate of candidates) {
+    if (containsBytes(candidate, PAGEAD_TEXT)) return true;
     const fields = tryParseMessage(candidate);
     if (fields && fields.some((field) => AD_RENDERER_FIELDS.has(field.number))) {
       return true;

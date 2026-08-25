@@ -378,12 +378,6 @@ if (!$response.body) {
   ) {
     // 商品页右上角自动出现的小视频窗口。
     if (obj?.result?.contents?.length > 0) obj.result.contents = [];
-  } else if (
-    options.ProductClean &&
-    functionId === "aigc_guide"
-  ) {
-    // 商品详情页右下角 AI 浮动入口。
-    obj.data = {};
   } else if (options.ProductClean && functionId === "wareBusiness") {
     if (options.ProductClean) {
       // “直播讲解”和“红包雨”共用 liveInfo 浮层数据。
@@ -391,6 +385,21 @@ if (!$response.body) {
       if (data?.liveInfo) delete data.liveInfo;
       // 商品页右侧“活动小助手/国家补贴”等营销助手浮窗。
       if (data?.floatingAssistant) delete data.floatingAssistant;
+      // 从主响应关闭右下角 AI 浮位，避免清空图标后残留灰色容器。
+      if (data) {
+        if (Object.prototype.hasOwnProperty.call(data, "aigcFlag")) {
+          data.aigcFlag = false;
+        }
+        if (Object.prototype.hasOwnProperty.call(data, "aigcFlagV2")) {
+          data.aigcFlagV2 = false;
+        }
+        if (Object.prototype.hasOwnProperty.call(data, "aigcFloorId")) {
+          delete data.aigcFloorId;
+        }
+        if (Object.prototype.hasOwnProperty.call(data, "aigcBizInfo")) {
+          delete data.aigcBizInfo;
+        }
+      }
       if (obj?.shareData?.statusInfo) {
         obj.shareData.statusInfo.livewindow = false;
       }

@@ -1,0 +1,25 @@
+#!name=到梦空间去广告
+#!desc=移除到梦空间广告
+#!author=ccyykk666[https://github.com/ccyykk666]
+#!date=2026-08-25
+#!loon_version=3.5.1(978)
+#!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/dmkj/icon.jpg
+
+[Rewrite]
+# 开屏广告
+response if ${url} ~= /^https:\/\/appdmkj\.5idream\.net\/appPic\/homepage(?:\?.*)?$/ && ${response.status} == 200 then response.json.jq(".data={}")
+
+# 我的页面广告
+response if ${url} ~= /^https:\/\/appdmkj\.5idream\.net\/v3\/user\/advertising\/list(?:\?.*)?$/ && ${response.status} == 200 then response.json.jq(".data=[]")
+
+# 本校首页轮播
+response if ${url} ~= /^https:\/\/appdmkj\.5idream\.net\/v2\/index\/promotionlist(?:\?.*)?$/ && ${response.status} == 200 then response.json.jq(".data.bannerList=[]")
+
+# 福利页广告与推广任务
+response if ${url} ~= /^https:\/\/appdmkj\.5idream\.net\/points\/index(?:\?.*)?$/ && ${response.status} == 200 then response.json.jq(".data.ad=0 | .data.centerTaskAdId=0 | .data.centerAdId=0 | .data.listAdId=0 | .data.bannerAdId=0 | .data.listTaskAdId=0 | .data.task=[] | del(.data.equities)")
+
+# 权益推广列表
+response if ${url} ~= /^https:\/\/appdmkj\.5idream\.net\/equities\/page(?:\?.*)?$/ && ${response.status} == 200 then response.json.jq(".data.total=0 | .data.list=[] | .data.haveMore=false")
+
+[MITM]
+hostname = appdmkj.5idream.net

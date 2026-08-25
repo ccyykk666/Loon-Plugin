@@ -1,0 +1,14 @@
+#!name=豆瓣去广告
+#!desc=移除豆瓣广告
+#!author=ccyykk666[https://github.com/ccyykk666]
+#!system=iOS, iPadOS
+#!date=2026-08-25
+#!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/douban/icon.jpg
+
+[Rewrite]
+# 规则参考：ddgksf2013 墨鱼去开屏 V2.0
+request if ${url} ~= /^https?:\/\/api\.douban\.com\/v2\/app_ads\/splash/ then reject(200)
+request if ${url} ~= /^https?:\/\/api\.douban\.com\/b.*\/common_ads\?.*/ then reject(200)
+
+[Mitm]
+hostname = api.douban.com

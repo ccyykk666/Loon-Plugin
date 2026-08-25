@@ -1,0 +1,27 @@
+#!name=中国移动去广告
+#!desc=移除中国移动广告
+#!author=ccyykk666[https://github.com/ccyykk666]
+#!system=iOS, iPadOS
+#!date=2026-08-25
+#!loon_version=3.5.1(978)
+#!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/china-mobile/icon.png
+
+[Argument]
+HideTopFamily = switch,false,tag=[顶部] 隐藏爱家,desc=隐藏首页顶部“爱家”Tab
+HideTopAge = switch,false,tag=[顶部] 隐藏网龄,desc=隐藏首页顶部“网龄”Tab
+HideTopPhone = switch,false,tag=[顶部] 隐藏手机,desc=隐藏首页顶部“手机”Tab
+HideTopNearby = switch,false,tag=[顶部] 隐藏附近厅,desc=隐藏首页顶部“附近厅”Tab
+HideTopAI = switch,false,tag=[顶部] 隐藏 AI,desc=隐藏首页顶部“AI尝鲜”Tab
+HideTopEnterprise = switch,false,tag=[顶部] 隐藏政企,desc=隐藏首页顶部“政企”Tab
+MineClean = switch,true,tag=[我的]基础净化,desc=移除我的页营销模块及已订业务页推荐商品
+
+[Rewrite]
+request if ${url} ~= /^https:\/\/client\.app\.coc\.10086\.cn\/biz-orange\/(?:DN\/(?:dropsAdverService\/getDropsAdverNew|homepagePopup\/getSortInfo|toast\/getToastRule)|DH\/toast\/august\/getToast|DA\/liveSuspension\/getPageCode)(?:\?.*)?$/ then reject_dict(200)
+response if ${url} ~= /^https:\/\/touch\.10086\.cn\/i\/v1\/pay\/popWindowQry\/[^?]+(?:\?.*)?$/ && ${response.status} == 200 then response.json.replace("data", null)
+response if ${MineClean} == true && ${url} ~= /^https:\/\/ad\.mcloud\.139\.com\/advertapi\/adv-filter\/adv-filter\/AdInfoFilter\/getAdInfos(?:\?.*)?$/ && ${response.status} == 200 then response.json.jq(".body=[]")
+
+[Script]
+http-response ^https:\/\/(?:client\.app\.coc\.10086\.cn\/biz-orange\/(?:DN\/(?:homePage\/getTopAreaList|myPageNew\/getMyPageNew|multipleInterfaces\/aggregationData|init\/getNavigation|searchWord\/getSearchWordInfo)|DA\/baseServiceFunction\/getAdverList)|h\.app\.coc\.10086\.cn\/biz-orange\/DH\/(?:message_query\/message\/query\/list|myCardVoucher\/getBannerList)|app\.10086\.cn\/biz-orange\/DA\/commonBoard\/getCommonBoard|touch\.10086\.cn\/i\/v1\/cust\/(?:aiMainQry|iopBatchQry)\/[^?]+)(?:\?.*)?$ script-path=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/china-mobile/remove_ads.js, requires-body=true, timeout=10, argument=[{HideTopFamily},{HideTopAge},{HideTopPhone},{HideTopNearby},{HideTopAI},{HideTopEnterprise},{MineClean}], tag=页面与内容净化
+
+[MITM]
+hostname = client.app.coc.10086.cn, h.app.coc.10086.cn, app.10086.cn, touch.10086.cn, ad.mcloud.139.com

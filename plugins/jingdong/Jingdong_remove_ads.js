@@ -173,14 +173,30 @@ if (!$response.body) {
       }
     }
 
-    // 订单卡片按钮上方的“全屋保障”保险推广条。
+    // 订单卡片中的“一键评分”和按钮上方的“全屋保障”推广条。
     for (const order of obj?.orderList || []) {
       const guide = order?.operateGuideFloor;
       if (
         guide?.clickPoint === "OrderList_InsuranceTip" ||
-        guide?.exPoint === "OrderList_InsuranceTipExpo"
+        guide?.exPoint === "OrderList_InsuranceTipExpo" ||
+        guide?.clickPoint === "OrderList_QuickEvaluate" ||
+        guide?.exPoint === "OrderList_QuickEvaluateExpo"
       ) {
         delete order.operateGuideFloor;
+      }
+
+      // 保留“评价晒单”按钮，只去掉按钮上方的优惠券推广标签。
+      for (const button of order?.buttons || []) {
+        if (
+          button?.btnEvent?.clickPoint === "OrderList_CommentsShare" &&
+          button?.businessMap &&
+          Object.prototype.hasOwnProperty.call(
+            button.businessMap,
+            "cancelDetainText"
+          )
+        ) {
+          delete button.businessMap.cancelDetainText;
+        }
       }
     }
   } else if (options.ProfileClean && functionId === "personinfoBusiness") {

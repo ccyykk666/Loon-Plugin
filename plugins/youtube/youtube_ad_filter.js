@@ -20,6 +20,11 @@ const GUIDE_ICON_RENDERER_FIELD = 117501096;
 const GUIDE_LABEL_RENDERER_FIELD = 318370163;
 const GUIDE_BROWSE_ID_FIELD = 1;
 const AD_ITEM_PATH = [153515154, 172660663, 1, 168777401, 5];
+const NEXT_SPONSORED_LIST_PATH = [14, 78882851, 3, 29209665];
+const NEXT_PRODUCT_ROOT_PATH = [14, 78882851];
+const NEXT_PRODUCT_FULLSCREEN_PATH = [
+  193948706, 5, 153515154, 172660663, 1, 168777401, 5, 283055480
+];
 const BROWSE_CONTAINER_KEY = encodeVarint(BROWSE_CONTAINER_FIELD * 8 + 2);
 const AD_ITEM_ROOT_KEY = encodeVarint(AD_ITEM_PATH[0] * 8 + 2);
 const LIST_FIELD_KEY = encodeVarint(LIST_FIELD * 8 + 2);
@@ -71,6 +76,12 @@ function rewriteResponse(path) {
       containsBytes(input, SHOPPING_ASSET_TEXT);
     result = rewriteBrowseTree(input, 0, removeProducts);
     if (path.endsWith("/next")) {
+      if (containsBytes(result.bytes, PAGEAD_TEXT)) {
+        result = mergeResults(result, removeNextSponsoredCards(result.bytes));
+      }
+      if (containsBytes(result.bytes, SHOPPING_ASSET_TEXT)) {
+        result = mergeResults(result, removeNextProductFullscreen(result.bytes));
+      }
       if (containsBytes(result.bytes, VISIT_ADVERTISER_TEXT)) {
         result = mergeResults(result, removeNextPlaybackAdMetadata(result.bytes));
       }
@@ -642,6 +653,59 @@ function isAdItem(bytes) {
     if (containsBytes(candidate, PAGEAD_TEXT)) return true;
   }
   return false;
+}
+
+function removeNextSponsoredCards(bytes) {
+  return rewritePayloadPath(
+    bytes,
+    NEXT_SPONSORED_LIST_PATH,
+    0,
+    removeSponsoredListItems
+  );
+}
+
+function removeSponsoredListItems(bytes) {
+  return removeMatchingFields(bytes, 2, isAdItem, true);
+}
+
+function removeNextProductFullscreen(bytes) {
+  return rewritePayloadPath(
+    bytes,
+    NEXT_PRODUCT_ROOT_PATH,
+    0,
+    removeProductFullscreenFields
+  );
+}
+
+function removeProductFullscreenFields(bytes) {
+  return removeMatchingFields(
+    bytes,
+    15,
+    (payload) => hasPayloadAtPath(payload, NEXT_PRODUCT_FULLSCREEN_PATH),
+    false
+  );
+}
+
+function removeMatchingFields(bytes, number, predicate, ad) {
+  const fields = tryParseMessage(bytes);
+  if (!fields) return { bytes, changed: false };
+  const removed = new Set();
+  for (let index = 0; index < fields.length; index++) {
+    const field = fields[index];
+    if (
+      field.number === number &&
+      field.wireType === 2 &&
+      predicate(field.payload)
+    ) {
+      removed.add(index);
+      if (ad) removedAds += 1;
+      else removedProducts += 1;
+    }
+  }
+  return {
+    bytes: removed.size ? rebuildMessage(fields, null, removed) : bytes,
+    changed: removed.size > 0
+  };
 }
 
 function removeNextPlaybackAdMetadata(bytes) {

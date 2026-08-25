@@ -397,14 +397,14 @@ if (!$response.body) {
 
       // 商品主图“AI 使用说明”及相关 AIGC 入口。
       if (data) {
-        if (Object.prototype.hasOwnProperty.call(data, "aigcFlag")) {
-          data.aigcFlag = false;
+        for (const key of [
+          "aigcFlag",
+          "aigcFlagV2",
+          "aigcFloorId",
+          "aigcBizInfo"
+        ]) {
+          if (Object.prototype.hasOwnProperty.call(data, key)) delete data[key];
         }
-        if (Object.prototype.hasOwnProperty.call(data, "aigcFlagV2")) {
-          data.aigcFlagV2 = false;
-        }
-        if (data.aigcFloorId) delete data.aigcFloorId;
-        if (data.aigcBizInfo) delete data.aigcBizInfo;
         if (data?.daJiaPing?.floorQoList?.length > 0) {
           for (let item of data.daJiaPing.floorQoList) {
             if (Object.prototype.hasOwnProperty.call(item, "aiOverview")) {
@@ -413,16 +413,25 @@ if (!$response.body) {
           }
         }
       }
+
+      const cleanMainPicAigcMarkers = (node) => {
+        if (!node || typeof node !== "object") return;
+        for (const key of Object.keys(node)) {
+          if (/aigc/i.test(key)) {
+            delete node[key];
+          } else {
+            cleanMainPicAigcMarkers(node[key]);
+          }
+        }
+      };
       for (let floor of obj?.floors || []) {
-        if (floor?.data?.extMap?.mainPicAigcInfo) {
-          delete floor.data.extMap.mainPicAigcInfo;
+        if (
+          floor?.mId === "bpMainImage" ||
+          floor?.businessCode === "bpMainImage"
+        ) {
+          cleanMainPicAigcMarkers(floor.data);
         }
       }
-    }
-
-    if (options.ProductClean && obj?.floors?.length > 0) {
-      // “为你推荐”和“潮流配件馆”同属 bpyxlc14 融合楼层。
-      obj.floors = obj.floors.filter((floor) => floor?.mId !== "bpyxlc14");
     }
 
     if (obj?.floors?.length > 0) {

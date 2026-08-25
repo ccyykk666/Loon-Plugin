@@ -460,6 +460,11 @@ if (!$response.body) {
     // 购物车 source=6 推荐商品流。
     clearRecommendResponse(obj);
   } else if (functionId === "uniformRecommend") {
+    const isProductDetailRecommend =
+      options.ProductClean &&
+      requestRefererPage === "WareInfoViewController" &&
+      String(obj?.adIds || "") === "4563" &&
+      Array.isArray(obj?.reasonFloorWareInfos);
     const isOrderRecommend =
       requestContext.includes("JDOrderTest_p_detail") ||
       requestContext.includes("JDOrderTest_p_orderlist") ||
@@ -480,6 +485,10 @@ if (!$response.body) {
       isMessageRecommend
     ) {
       clearRecommendResponse(obj);
+    }
+    if (isProductDetailRecommend) {
+      // 商品页最尾部“看了又看”推荐楼层。
+      obj.reasonFloorWareInfos = [];
     }
   }
 

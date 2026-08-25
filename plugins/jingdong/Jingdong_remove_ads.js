@@ -393,6 +393,14 @@ if (!$response.body) {
       if (data?.floatingAssistant) delete data.floatingAssistant;
       if (obj?.shareData?.statusInfo) {
         obj.shareData.statusInfo.livewindow = false;
+        if (
+          Object.prototype.hasOwnProperty.call(
+            obj.shareData.statusInfo,
+            "askCommunityButton"
+          )
+        ) {
+          obj.shareData.statusInfo.askCommunityButton = false;
+        }
       }
 
       // 商品主图“AI 使用说明”及相关 AIGC 入口。
@@ -437,7 +445,9 @@ if (!$response.body) {
         "preferenceMore"
       ];
       obj.floors = obj.floors.filter(
-        (floor) => !removeFloorIds.includes(floor?.mId)
+        (floor) =>
+          !removeFloorIds.includes(floor?.mId) &&
+          !removeFloorIds.includes(floor?.businessCode)
       );
     }
   } else if (options.ProductClean && functionId === "queryEvaluateFloors") {

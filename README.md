@@ -2,6 +2,7 @@
 
 | 应用名称 | 安装链接 |
 | --- | --- |
+| bilibili国际版 | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/bilibili-international/bilibili_international_ad.lpx) |
 | 中国移动 | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/china-mobile/china_mobile_ad.plugin) |
 | 到梦空间 | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/dmkj/dmkj_ad.plugin) |
 | 豆瓣 | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/douban/douban_ad.lpx) |

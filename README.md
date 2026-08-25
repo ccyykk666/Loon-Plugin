@@ -13,3 +13,4 @@
 | 网易云音乐 | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/netease/neteasemusic_ad.lpx) |
 | 云闪付 | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/unionpay/UnionPayCloudPay.lpx) |
 | 微博轻享版 | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/weibo/weibo_ad.lpx) |
+| YouTube | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/youtube/youtube_ad.lpx) |

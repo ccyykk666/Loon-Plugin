@@ -21,7 +21,6 @@ const SETTINGS = {
   TopBook: readSetting("TopBook", false),
   TopLive: readSetting("TopLive", false),
   TopAI: readSetting("TopAI", false),
-  HomeSimple: readSetting("HomeSimple", true),
   MineClean: readSetting("MineClean", true),
 };
 const TEXT_ENCODER = new TextEncoder();
@@ -340,70 +339,6 @@ function cleanCommentTree(value) {
   }
   for (const child of Object.values(value)) changes += cleanCommentTree(child);
   return changes;
-}
-
-const HOME_BLOCK_CODES = new Set([
-  "PAGE_RECOMMEND_DAILY_RECOMMEND",
-  "PAGE_RECOMMEND_SPECIAL_CLOUD_VILLAGE_PLAYLIST",
-  "PAGE_RECOMMEND_RADAR",
-  "PAGE_RECOMMEND_RANK",
-  "PAGE_RECOMMEND_MY_SHEET",
-  "PAGE_RECOMMEND_COMBINATION",
-  "PAGE_RECOMMEND_PRIVATE_RCMD_SONG",
-  "PAGE_RECOMMEND_RED_SIMILAR_SONG",
-]);
-
-function filterSerializedCodes(value) {
-  try {
-    const parsed = JSON.parse(value);
-    if (!Array.isArray(parsed)) return value;
-    const filtered = parsed.filter((code) => HOME_BLOCK_CODES.has(code));
-    return filtered.length === parsed.length ? value : JSON.stringify(filtered);
-  } catch {
-    return value;
-  }
-}
-
-function cleanHomeRecommendation(payload) {
-  if (!SETTINGS.HomeSimple || !payload.data) return false;
-  const data = payload.data;
-  let changed = false;
-  if (Array.isArray(data.blocks)) {
-    const filtered = data.blocks.filter((block) =>
-      HOME_BLOCK_CODES.has(block?.bizCode),
-    );
-    if (filtered.length !== data.blocks.length) {
-      data.blocks = filtered;
-      changed = true;
-    }
-  }
-  for (const field of ["blockCodeOrderList", "algDemoteBlockCodeOrderList"]) {
-    if (typeof data[field] === "string") {
-      const filtered = filterSerializedCodes(data[field]);
-      if (filtered !== data[field]) {
-        data[field] = filtered;
-        changed = true;
-      }
-    }
-  }
-  if (Array.isArray(data.requestBlockOrder)) {
-    const filtered = data.requestBlockOrder.filter((code) =>
-      HOME_BLOCK_CODES.has(code),
-    );
-    if (filtered.length !== data.requestBlockOrder.length) {
-      data.requestBlockOrder = filtered;
-      changed = true;
-    }
-  }
-  if ("hasMore" in data && data.hasMore !== false) {
-    data.hasMore = false;
-    changed = true;
-  }
-  if ("cursor" in data && data.cursor !== -1) {
-    data.cursor = -1;
-    changed = true;
-  }
-  return changed;
 }
 
 function clearSubtitles(value) {
@@ -757,17 +692,6 @@ const HANDLERS = {
   "/link/home/framework/top/tab": cleanTopTabs,
   "/search/default/keyword/list": cleanSearchDefaultKeyword,
   "/homepage/block/page": cleanHomepageBanners,
-  "/link/page/rcmd/resource/show": cleanHomeRecommendation,
-  "/link/page/rcmd/block/resource/multi/refresh": (payload) => {
-    if (!SETTINGS.HomeSimple) return false;
-    if (!Array.isArray(payload.data)) return false;
-    const filtered = payload.data.filter((block) =>
-      HOME_BLOCK_CODES.has(block?.blockCode),
-    );
-    if (filtered.length === payload.data.length) return false;
-    payload.data = filtered;
-    return true;
-  },
 };
 
 function cleanInsertedResources(payload) {

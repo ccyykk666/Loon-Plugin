@@ -13,6 +13,7 @@ function readSetting(name, fallback) {
 }
 
 const SETTINGS = {
+  BottomSimple: readSetting("BottomSimple", true),
   LegacyHomeFramework: readSetting("LegacyHomeFramework", true),
   TopRcmd: readSetting("TopRcmd", true),
   TopMusic: readSetting("TopMusic", true),
@@ -513,24 +514,6 @@ function cleanLyricsCommentExperiment(payload) {
   return true;
 }
 
-function clearLyricsEngagementCounts(payload) {
-  if (!payload.data || typeof payload.data !== "object") return false;
-  const resources = Array.isArray(payload.data) ? payload.data : [payload.data];
-  let changed = false;
-  for (const resource of resources) {
-    if (!resource || typeof resource !== "object") continue;
-    if ("commentCountDesc" in resource && resource.commentCountDesc !== "") {
-      resource.commentCountDesc = "";
-      changed = true;
-    }
-    if ("likedCount" in resource && resource.likedCount !== 0) {
-      resource.likedCount = 0;
-      changed = true;
-    }
-  }
-  return changed;
-}
-
 function clearEntitledPrivilegeFee(privilege) {
   if (privilege?.payed !== 1 || privilege.fee === 0) return false;
   privilege.fee = 0;
@@ -759,7 +742,6 @@ const HANDLERS = {
   },
   "/link/scene/show/resource": cleanPlayerHints,
   "/link/scene/show/resource/scene-code/player": cleanPlayerHints,
-  "/resource/commentInfo/list": clearLyricsEngagementCounts,
   "/rtrs/abt/front/expinfo/list": cleanLyricsCommentExperiment,
   "/v3/song/detail": cleanSongDetail,
   "/song/enhance/privilege": cleanPrivilegeVipBadges,
@@ -768,7 +750,9 @@ const HANDLERS = {
   "/v1/artist/top/song": (payload) => cleanSongListVipBadges(payload.songs),
   "/user/sub/artist/exist": cleanPlayerArtistFollow,
   "/link/home/framework/tab": (payload) => {
-    return cleanHomeFramework(payload);
+    const frameworkChanged = cleanHomeFramework(payload);
+    const bottomChanged = cleanBottomTabs(payload);
+    return frameworkChanged || bottomChanged;
   },
   "/link/home/framework/top/tab": cleanTopTabs,
   "/search/default/keyword/list": cleanSearchDefaultKeyword,
@@ -854,6 +838,28 @@ function cleanSidebarResources(payload) {
     payload.trp.rules = filteredRules;
   }
   return changes > 0;
+}
+
+function cleanBottomTabs(payload) {
+  if (
+    !SETTINGS.BottomSimple ||
+    !Array.isArray(payload.data?.commonResourceList)
+  )
+    return false;
+  const filtered = payload.data.commonResourceList.filter(
+    (tab) =>
+      ["main", "mine"].includes(tab?.resourceType) ||
+      ["首页", "我的"].includes(tab?.title),
+  );
+  if (filtered.length < 2) return false;
+  let changed = filtered.length !== payload.data.commonResourceList.length;
+  payload.data.commonResourceList = filtered;
+
+  if (Array.isArray(payload.data.adminList) && payload.data.adminList.length) {
+    payload.data.adminList = [];
+    changed = true;
+  }
+  return changed;
 }
 
 function cleanHomeFramework(payload) {

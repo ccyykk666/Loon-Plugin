@@ -737,23 +737,6 @@ function cleanSidebarResources(payload) {
   return changes > 0;
 }
 
-function cleanHomeFramework(payload) {
-  if (!SETTINGS.LegacyHomeFramework || !payload.data) return false;
-  let changed = false;
-
-  if (payload.data.homeFrameworkType === "fastPlay") {
-    payload.data.homeFrameworkType = "normal";
-    if (payload.data.selectedHomeTopTabCode === "fastPlay") {
-      payload.data.selectedHomeTopTabCode = "rcmd";
-    }
-    if (payload.data.haveShowFastPlayGuide !== false) {
-      payload.data.haveShowFastPlayGuide = false;
-    }
-    changed = true;
-  }
-  return changed;
-}
-
 function cleanSearchDefaultKeyword(payload) {
   if (!Array.isArray(payload.data?.keywords)) return false;
 

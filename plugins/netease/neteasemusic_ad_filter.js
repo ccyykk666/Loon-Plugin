@@ -579,9 +579,12 @@ const HANDLERS = {
     changed =
       replaceData(payload, "/api/event/rcmd/topic/list", { topicList: [] }) ||
       changed;
-    changed =
-      cleanCommentTree(payload["/api/v2/resource/comments"]?.data) > 0 ||
-      changed;
+    for (const path of [
+      "/api/v2/resource/comments",
+      "/api/v2/resource/comments/preload",
+    ]) {
+      changed = cleanCommentTree(payload[path]?.data) > 0 || changed;
+    }
     for (const path of [
       "/api/comment/feed/inserted/resources",
       "/api/comment/feed/inserted/resources/combined",

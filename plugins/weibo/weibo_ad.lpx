@@ -2,7 +2,7 @@
 #!desc=移除微博轻享版广告
 #!author=ccyykk666[https://github.com/ccyykk666]
 #!system=ios
-#!date=2026-08-25
+#!date=2026-08-27
 #!loon_version=3.5.1(978)
 #!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/weibo/icon.jpg
 
@@ -19,7 +19,7 @@ response if ${url} ~= /^https:\/\/weibointl\.api\.weibo\.cn\/portal\.php\?(?:[^#
 
 [Script]
 # 评论、信息流、详情页与“我的”页动态净化
-http-response ^https:\/\/(?:api\.weibo\.cn\/2\/(?:comments\/build_comments|statuses\/(?:friends\/timeline|unread_hot_timeline|container_timeline_topic|container_detail)|cardlist)(?:\?|$)|weibointl\.api\.weibo\.cn\/portal\.php\?(?:[^#]*&)?a=user_center(?:&|$)) script-path=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/weibo/weibo_ad_filter.js, requires-body=true, timeout=20, tag=微博响应净化
+http-response ^https:\/\/(?:api\.weibo\.cn\/2\/(?:comments\/build_comments|statuses\/(?:friends\/timeline|unread_hot_timeline|container_timeline_hot|container_timeline_topic|container_detail)|cardlist)(?:\?|$)|weibointl\.api\.weibo\.cn\/portal\.php\?(?:[^#]*&)?a=user_center(?:&|$)) script-path=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/weibo/weibo_ad_filter.js, requires-body=true, timeout=20, tag=微博响应净化
 
 [Mitm]
 hostname = api.weibo.cn, weibointl.api.weibo.cn, bootpreload.uve.weibo.com, bootrealtime.uve.weibo.com

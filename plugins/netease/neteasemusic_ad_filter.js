@@ -512,6 +512,16 @@ function cleanPlayerHints(payload) {
   return true;
 }
 
+function cleanLyricsCommentExperiment(payload) {
+  if (!Array.isArray(payload.data)) return false;
+  const index = payload.data.findIndex(
+    (experiment) => experiment?.expName === "lyrics_addcomment",
+  );
+  if (index < 0) return false;
+  payload.data.splice(index, 1);
+  return true;
+}
+
 function clearEntitledPrivilegeFee(privilege) {
   if (privilege?.payed !== 1 || privilege.fee === 0) return false;
   privilege.fee = 0;
@@ -741,6 +751,7 @@ const HANDLERS = {
   },
   "/link/scene/show/resource": cleanPlayerHints,
   "/link/scene/show/resource/scene-code/player": cleanPlayerHints,
+  "/rtrs/abt/front/expinfo/list": cleanLyricsCommentExperiment,
   "/v3/song/detail": cleanSongDetail,
   "/song/enhance/privilege": cleanPrivilegeVipBadges,
   "/song/enhance/player/url/v1": cleanPrivilegeVipBadges,

@@ -4,7 +4,7 @@
 #!system=ios
 #!loon_version=3.5.1(978)
 #!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/netease/icon.jpg
-#!date=2026-08-25
+#!date=2026-08-27
 
 [Argument]
 LegacyHomeFramework = switch,true,tag=[首页框架] 旧版首页,desc=开启后移除心动Tab并使用旧版首页；关闭后保留新版心动框架作为兼容锚点
@@ -33,7 +33,7 @@ DOMAIN, iadmusicmatvideo.music.126.net, REJECT
 response if ${url} ~= /^https?:\/\/(?:(?:ipv4|interface\d*)\.music\.163\.com|music\.163\.com)\/api\/v6\/playlist\/detail(?:\?.*)?$/ && ${response.status} == 200 then response.json.jq("(.privileges | map(select(.payed == 1) | .id)) as $entitled | .privileges |= map(if .payed == 1 and .fee != 0 then .fee = 0 else . end) | .playlist.tracks |= map(.id as $id | if (($entitled | index($id)) != null and .fee != 0) then .fee = 0 else . end) | .playlist.trackIds |= map(del(.dpr))")
 
 [Script]
-http-response ^https?:\/\/(?:(?:ipv4|interface\d*)\.music\.163\.com|music\.163\.com)\/x?eapi\/(?:batch|v2\/resource\/comments|v2\/resource\/comment\/floor\/get|resource\/comments\/reply\/preload|moment\/tab\/info\/get|comment\/feed\/inserted\/resources(?:\/(?:combined|isolation))?|moment\/pub\/entrance\/get|moment\/song\/feed\/get|link\/home\/framework\/(?:tab|top\/tab)|search\/default\/keyword\/list|homepage\/block\/page|link\/scene\/show\/resource(?:\/scene-code\/player)?|v3\/song\/detail|song\/enhance\/(?:privilege|player\/url\/v1)|v3\/discovery\/recommend\/songs|v1\/artist\/top\/song|user\/sub\/artist\/exist|sp\/flow\/popup\/query|vipactivity\/app\/cashier\/setting\/get|v1\/user\/info|link\/position\/show\/resource|delivery\/batch-deliver|creator\/musician\/reminder\/message\/get)(?:\?.*)?$ script-path=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/netease/neteasemusic_ad_filter.js, requires-body=true, binary-body-mode=true, timeout=20, tag=网易云音乐净化, argument=[{BottomSimple},{LegacyHomeFramework},{TopRcmd},{TopMusic},{TopPodcast},{TopBook},{TopLive},{TopAI},{MineClean}]
+http-response ^https?:\/\/(?:(?:ipv4|interface\d*)\.music\.163\.com|music\.163\.com)\/x?eapi\/(?:batch|v2\/resource\/comments|v2\/resource\/comment\/floor\/get|resource\/comments\/reply\/preload|moment\/tab\/info\/get|comment\/feed\/inserted\/resources(?:\/(?:combined|isolation))?|moment\/pub\/entrance\/get|moment\/song\/feed\/get|rtrs\/abt\/front\/expinfo\/list|link\/home\/framework\/(?:tab|top\/tab)|search\/default\/keyword\/list|homepage\/block\/page|link\/scene\/show\/resource(?:\/scene-code\/player)?|v3\/song\/detail|song\/enhance\/(?:privilege|player\/url\/v1)|v3\/discovery\/recommend\/songs|v1\/artist\/top\/song|user\/sub\/artist\/exist|sp\/flow\/popup\/query|vipactivity\/app\/cashier\/setting\/get|v1\/user\/info|link\/position\/show\/resource|delivery\/batch-deliver|creator\/musician\/reminder\/message\/get)(?:\?.*)?$ script-path=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/netease/neteasemusic_ad_filter.js, requires-body=true, binary-body-mode=true, timeout=20, tag=网易云音乐净化, argument=[{BottomSimple},{LegacyHomeFramework},{TopRcmd},{TopMusic},{TopPodcast},{TopBook},{TopLive},{TopAI},{MineClean}]
 
 http-response ^https?:\/\/(?:(?:ipv4|interface\d*)\.music\.163\.com|music\.163\.com)\/x?eapi\/link\/page\/rcmd\/(?:resource\/show|block\/resource\/multi\/refresh)(?:\?.*)?$ script-path=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/netease/neteasemusic_home_filter.js, requires-body=true, binary-body-mode=true, timeout=20, tag=首页推荐精简, argument=[{HomeSimple}], enable={HomeSimple}
 

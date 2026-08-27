@@ -1,10 +1,4 @@
-/*!
- * 网易云音乐净化
- * Loon-only response filter.
- *
- * Based on Yu9191/NeteasemusicAd.
- * Original Copyright (c) 2026 Yu9191. Licensed under the MIT License.
- */
+/*! Original Copyright (c) 2026 Yu9191. Licensed under the MIT License. */
 
 const ARGUMENTS =
   globalThis.$argument && typeof globalThis.$argument === "object"
@@ -19,7 +13,6 @@ function readSetting(name, fallback) {
 }
 
 const SETTINGS = {
-  BottomSimple: readSetting("BottomSimple", true),
   LegacyHomeFramework: readSetting("LegacyHomeFramework", true),
   TopRcmd: readSetting("TopRcmd", true),
   TopMusic: readSetting("TopMusic", true),
@@ -34,8 +27,6 @@ const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder("utf-8");
 const EAPI_KEY = TEXT_ENCODER.encode("e82ckenh8dichen8");
 
-// Minimal AES-128 ECB implementation. NetEase eapi responses use this fixed
-// key with PKCS#7 padding; no other CryptoJS functionality is required.
 const AES_SBOX = Uint8Array.from([
   0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe,
   0xd7, 0xab, 0x76, 0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4,
@@ -649,7 +640,6 @@ const HANDLERS = {
   },
   "/link/position/show/resource": cleanSidebarResources,
   "/delivery/batch-deliver": (payload) => {
-    // Slot 119 is the captured My-page membership promotion.
     if (
       !SETTINGS.MineClean ||
       !payload.data ||
@@ -661,11 +651,6 @@ const HANDLERS = {
     return true;
   },
   "/link/scene/show/resource": cleanPlayerHints,
-  "/link/home/framework/tab": (payload) => {
-    const frameworkChanged = cleanHomeFramework(payload);
-    const bottomChanged = cleanBottomTabs(payload);
-    return frameworkChanged || bottomChanged;
-  },
   "/link/home/framework/top/tab": cleanTopTabs,
   "/search/default/keyword/list": cleanSearchDefaultKeyword,
   "/homepage/block/page": cleanHomepageBanners,
@@ -706,9 +691,6 @@ function cleanSidebarResources(payload) {
   if (!payload.data) return false;
   let changes = 0;
   const crossPosition = payload.data.crossPlatformResource?.positionCode;
-  // This is the standalone "精选笔记" section on the comment page. Keep it
-  // independent from the My-page cleanup switch because it is not a sidebar
-  // resource and the user asked to remove this section specifically.
   if (crossPosition === "MOMENT_MORE_RCMD_PAGE") {
     payload.data.crossPlatformResource = {};
     changes += 1;
@@ -755,34 +737,10 @@ function cleanSidebarResources(payload) {
   return changes > 0;
 }
 
-function cleanBottomTabs(payload) {
-  if (
-    !SETTINGS.BottomSimple ||
-    !Array.isArray(payload.data?.commonResourceList)
-  )
-    return false;
-  const filtered = payload.data.commonResourceList.filter(
-    (tab) =>
-      ["main", "mine"].includes(tab?.resourceType) ||
-      ["首页", "我的"].includes(tab?.title),
-  );
-  if (filtered.length < 2) return false;
-  let changed = filtered.length !== payload.data.commonResourceList.length;
-  payload.data.commonResourceList = filtered;
-
-  if (Array.isArray(payload.data.adminList) && payload.data.adminList.length) {
-    payload.data.adminList = [];
-    changed = true;
-  }
-  return changed;
-}
-
 function cleanHomeFramework(payload) {
   if (!SETTINGS.LegacyHomeFramework || !payload.data) return false;
   let changed = false;
 
-  // Keep the legacy workaround isolated behind its own switch. The client
-  // rebuilds its built-in fastPlay Tabs when this value is left unchanged.
   if (payload.data.homeFrameworkType === "fastPlay") {
     payload.data.homeFrameworkType = "normal";
     if (payload.data.selectedHomeTopTabCode === "fastPlay") {
@@ -820,8 +778,6 @@ function cleanTopTabs(payload) {
   if (!Array.isArray(payload.data?.commonResourceList)) return false;
   const original = payload.data.commonResourceList;
 
-  // Keep each surviving Tab's original identity and payload. Do not create a
-  // fastPlay alias from another Tab: the client may route by resCode.
   const filtered = original.filter((tab) => {
     if (tab?.resCode === "fastPlay") return !SETTINGS.LegacyHomeFramework;
     const setting =
@@ -830,7 +786,6 @@ function cleanTopTabs(payload) {
     return Boolean(setting && SETTINGS[setting]);
   });
 
-  // Keep a valid ordinary fallback if every optional Tab is disabled.
   const fallback =
     original.find(
       (tab) => tab?.resCode === "rcmd" || tab?.title === "推荐",
@@ -842,9 +797,6 @@ function cleanTopTabs(payload) {
     result.some((tab, index) => tab !== original[index]);
   payload.data.commonResourceList = result;
 
-  // Keep trp.rules consistent with the filtered Tab list. The client can use
-  // these rules to rebuild top Tabs, so remove only concrete musicTopTab rules
-  // whose trp_id is no longer present; keep guide/intervention rules intact.
   const allowedTopTabIds = new Set(
     result.map((tab) => tab?.trp_id).filter(Boolean),
   );
@@ -862,8 +814,6 @@ function cleanTopTabs(payload) {
     }
   }
 
-  // Keep all other top-tab layout fields untouched; only remove server-side
-  // admin entries, matching the reference implementation's minimal rewrite.
   if (Array.isArray(payload.data.adminList) && payload.data.adminList.length) {
     payload.data.adminList = [];
     changed = true;

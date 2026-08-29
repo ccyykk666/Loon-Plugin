@@ -2,9 +2,9 @@
 #!desc=移除网易云音乐广告
 #!author=ccyykk666[https://github.com/ccyykk666], Keywos[https://github.com/Keywos]
 #!system=ios
-#!loon_version=3.5.1(978)
+#!loon_version=3.5.1(983)
 #!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/netease/icon.jpg
-#!date=2026-08-27
+#!date=2026-08-29
 
 [Argument]
 LegacyHomeFramework = switch,true,tag=[首页框架] 旧版首页,desc=开启后移除心动Tab并使用旧版首页；关闭后保留新版心动框架作为兼容锚点
@@ -28,7 +28,7 @@ DOMAIN, iadmusicmatvideo.music.126.net, REJECT
 response if ${url} ~= /^https?:\/\/(?:(?:ipv4|interface\d*)\.music\.163\.com|music\.163\.com)\/api\/v6\/playlist\/detail(?:\?.*)?$/ && ${response.status} == 200 then response.json.jq("(.privileges | map(select(.payed == 1) | .id)) as $entitled | .privileges |= map(if .payed == 1 and .fee != 0 then .fee = 0 else . end) | .playlist.tracks |= map(.id as $id | if (($entitled | index($id)) != null and .fee != 0) then .fee = 0 else . end) | .playlist.trackIds |= map(del(.dpr))")
 
 [Script]
-http-response ^https?:\/\/(?:(?:ipv4|interface\d*)\.music\.163\.com|music\.163\.com)\/x?eapi\/(?:batch|v2\/resource\/comments|v2\/resource\/comment\/floor\/get|resource\/comments\/reply\/preload|moment\/tab\/info\/get|comment\/feed\/inserted\/resources(?:\/(?:combined|isolation))?|moment\/pub\/entrance\/get|moment\/song\/feed\/get|rtrs\/abt\/front\/expinfo\/list|link\/home\/framework\/(?:tab|top\/tab)|search\/default\/keyword\/list|homepage\/block\/page|link\/scene\/show\/resource(?:\/scene-code\/player)?|v3\/song\/detail|song\/enhance\/(?:privilege|player\/url\/v1)|v3\/discovery\/recommend\/songs|v1\/artist\/top\/song|user\/sub\/artist\/exist|sp\/flow\/popup\/query|vipactivity\/app\/cashier\/setting\/get|v1\/user\/info|link\/position\/show\/resource|delivery\/batch-deliver|creator\/musician\/reminder\/message\/get)(?:\?.*)?$ script-path=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/netease/neteasemusic_ad_filter.js, requires-body=true, binary-body-mode=true, timeout=20, tag=网易云音乐净化, argument=[{BottomSimple},{LegacyHomeFramework},{TopRcmd},{TopMusic},{TopPodcast},{TopBook},{TopLive},{TopAI},{MineClean}]
+response if ${url} ~= /^https?:\/\/(?:(?:ipv4|interface\d*)\.music\.163\.com|music\.163\.com)\/x?eapi\/(?:batch|v2\/resource\/comments|v2\/resource\/comment\/floor\/get|resource\/comments\/reply\/preload|moment\/tab\/info\/get|comment\/feed\/inserted\/resources(?:\/(?:combined|isolation))?|moment\/pub\/entrance\/get|moment\/song\/feed\/get|rtrs\/abt\/front\/expinfo\/list|link\/home\/framework\/(?:tab|top\/tab)|search\/default\/keyword\/list|homepage\/block\/page|link\/scene\/show\/resource(?:\/scene-code\/player)?|v3\/song\/detail|song\/enhance\/(?:privilege|player\/url\/v1)|v3\/discovery\/recommend\/songs|v1\/artist\/top\/song|user\/sub\/artist\/exist|sp\/flow\/popup\/query|vipactivity\/app\/cashier\/setting\/get|v1\/user\/info|link\/position\/show\/resource|delivery\/batch-deliver|creator\/musician\/reminder\/message\/get)(?:\?.*)?$/i then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/netease/neteasemusic_ad_filter.js", {${BottomSimple}, ${LegacyHomeFramework}, ${TopRcmd}, ${TopMusic}, ${TopPodcast}, ${TopBook}, ${TopLive}, ${TopAI}, ${MineClean}}) with tag="网易云音乐净化", timeout=20, requires_body=true, binary_body_mode=true
 
 [MitM]
 hostname = ipv4.music.163.com, interface.music.163.com, interface2.music.163.com, interface3.music.163.com, interface4.music.163.com, interface5.music.163.com, music.163.com

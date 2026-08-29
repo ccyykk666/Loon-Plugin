@@ -2,8 +2,8 @@
 #!desc=移除中国移动广告
 #!author=ccyykk666[https://github.com/ccyykk666]
 #!system=iOS, iPadOS
-#!date=2026-08-25
-#!loon_version=3.5.1(978)
+#!date=2026-08-29
+#!loon_version=3.5.1(983)
 #!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/china-mobile/icon.png
 
 [Argument]
@@ -21,7 +21,7 @@ response if ${url} ~= /^https:\/\/touch\.10086\.cn\/i\/v1\/pay\/popWindowQry\/[^
 response if ${MineClean} == true && ${url} ~= /^https:\/\/ad\.mcloud\.139\.com\/advertapi\/adv-filter\/adv-filter\/AdInfoFilter\/getAdInfos(?:\?.*)?$/ && ${response.status} == 200 then response.json.jq(".body=[]")
 
 [Script]
-http-response ^https:\/\/(?:client\.app\.coc\.10086\.cn\/biz-orange\/(?:DN\/(?:homePage\/getTopAreaList|myPageNew\/getMyPageNew|multipleInterfaces\/aggregationData|init\/getNavigation|searchWord\/getSearchWordInfo)|DA\/baseServiceFunction\/getAdverList)|h\.app\.coc\.10086\.cn\/biz-orange\/DH\/(?:message_query\/message\/query\/list|myCardVoucher\/getBannerList)|app\.10086\.cn\/biz-orange\/DA\/commonBoard\/getCommonBoard|touch\.10086\.cn\/i\/v1\/cust\/(?:aiMainQry|iopBatchQry)\/[^?]+)(?:\?.*)?$ script-path=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/china-mobile/remove_ads.js, requires-body=true, timeout=10, argument=[{HideTopFamily},{HideTopAge},{HideTopPhone},{HideTopNearby},{HideTopAI},{HideTopEnterprise},{MineClean}], tag=页面与内容净化
+response if ${url} ~= /^https:\/\/(?:client\.app\.coc\.10086\.cn\/biz-orange\/(?:DN\/(?:homePage\/getTopAreaList|myPageNew\/getMyPageNew|multipleInterfaces\/aggregationData|init\/getNavigation|searchWord\/getSearchWordInfo)|DA\/baseServiceFunction\/getAdverList)|h\.app\.coc\.10086\.cn\/biz-orange\/DH\/(?:message_query\/message\/query\/list|myCardVoucher\/getBannerList)|app\.10086\.cn\/biz-orange\/DA\/commonBoard\/getCommonBoard|touch\.10086\.cn\/i\/v1\/cust\/(?:aiMainQry|iopBatchQry)\/[^?]+)(?:\?.*)?$/i then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/china-mobile/remove_ads.js", {${HideTopFamily}, ${HideTopAge}, ${HideTopPhone}, ${HideTopNearby}, ${HideTopAI}, ${HideTopEnterprise}, ${MineClean}}) with tag="页面与内容净化", timeout=10, requires_body=true
 
 [MITM]
 hostname = client.app.coc.10086.cn, h.app.coc.10086.cn, app.10086.cn, touch.10086.cn, ad.mcloud.139.com

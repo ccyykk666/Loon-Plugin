@@ -4,13 +4,13 @@
 #!system=iOS, iPadOS
 #!loon_version=3.5.1(978)
 #!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/youtube/icon.png
-#!date=2026-08-25
+#!date=2026-08-29
 
 [Argument]
-HideShorts=switch, true, tag=1. 隐藏首页 Shorts, desc=移除首页信息流中的 Shorts 板块；关闭后保留 Shorts
-HideBottomShorts=switch, false, tag=2. 隐藏底部 Shorts, desc=隐藏底部导航栏中的 Shorts
-HideUpload=switch, false, tag=3. 隐藏底部上传, desc=隐藏底部导航栏中的上传按钮
-HideSubscriptions=switch, false, tag=4. 隐藏底部 Subscriptions, desc=隐藏底部导航栏中的 Subscriptions
+HideShorts=switch, true, tag=[首页] 隐藏 Shorts, desc=移除首页信息流及播放页下方的 Shorts 板块；关闭后保留 Shorts
+HideBottomShorts=switch, false, tag=[底栏] 隐藏 Shorts, desc=隐藏底部导航栏中的 Shorts
+HideUpload=switch, false, tag=[底栏] 隐藏上传, desc=隐藏底部导航栏中的上传按钮
+HideSubscriptions=switch, false, tag=[底栏] 隐藏 Subscriptions, desc=隐藏底部导航栏中的 Subscriptions
 
 [Script]
 # 页面广告、Shorts、底部导航与播放密钥响应使用同一个精简脚本

@@ -20,6 +20,9 @@ const GUIDE_ICON_RENDERER_FIELD = 117501096;
 const GUIDE_LABEL_RENDERER_FIELD = 318370163;
 const GUIDE_BROWSE_ID_FIELD = 1;
 const AD_ITEM_PATH = [153515154, 172660663, 1, 168777401, 5];
+const SHORTS_SHELF_ITEM_PATH = [
+  153515154, 172660663, 1, 168777401, 5, 315733268
+];
 const NEXT_SPONSORED_LIST_PATH = [14, 78882851, 3, 29209665];
 const NEXT_PRODUCT_ROOT_PATH = [14, 78882851];
 const NEXT_PRODUCT_FULLSCREEN_PATH = [
@@ -31,6 +34,7 @@ const LIST_FIELD_KEY = encodeVarint(LIST_FIELD * 8 + 2);
 const SHORTS_SHELF_KEY = encodeVarint(SHORTS_SHELF_FIELD * 8 + 2);
 const GUIDE_CONTAINER_KEY = encodeVarint(GUIDE_CONTAINER_FIELD * 8 + 2);
 const SHORTS_TEXT = asciiBytes("Shorts");
+const SHORTS_SHELF_EML_TEXT = asciiBytes("shorts_shelf.eml-fe");
 const PAGEAD_TEXT = asciiBytes("pagead");
 const VISIT_ADVERTISER_TEXT = asciiBytes("Visit advertiser");
 const PRODUCT_LOCATION_TEXT = asciiBytes("PRODUCT_LOCATION_");
@@ -548,6 +552,15 @@ function filterAdList(bytes, removeProducts) {
     if (isAdItem(field.payload)) {
       removed.add(index);
       removedAds += 1;
+      continue;
+    }
+    if (
+      FILTER_OPTIONS.hideShorts &&
+      containsBytes(field.payload, SHORTS_SHELF_EML_TEXT) &&
+      hasPayloadAtPath(field.payload, SHORTS_SHELF_ITEM_PATH)
+    ) {
+      removed.add(index);
+      removedShorts += 1;
       continue;
     }
     if (removeProducts && containsBytes(field.payload, SHOPPING_ASSET_TEXT)) {

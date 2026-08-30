@@ -7,8 +7,8 @@
 #!date=2026-08-25
 
 [Argument]
-FollowingTab=switch, true, tag=1. 关注, desc=开启时保留底栏“关注”，关闭时移除
-MessageTab=switch, true, tag=2. 消息, desc=开启时保留底栏“消息”，关闭时移除
+FollowingTab=switch, true, tag=1. 关注
+MessageTab=switch, true, tag=2. 消息
 
 [Rewrite]
 # 启动广告接口：返回抓包中已验证的空响应结构

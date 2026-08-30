@@ -7,16 +7,16 @@
 #!date=2026-08-29
 
 [Argument]
-LegacyHomeFramework = switch,true,tag=[首页框架] 旧版首页,desc=开启后移除心动Tab并使用旧版首页；关闭后保留新版心动框架作为兼容锚点
-TopRcmd = switch,true,tag=[顶部Tab] 推荐,desc=显示“推荐”Tab
-TopMusic = switch,true,tag=[顶部Tab] 音乐,desc=显示“音乐”Tab
-TopPodcast = switch,false,tag=[顶部Tab] 播客,desc=显示“播客”Tab
-TopBook = switch,false,tag=[顶部Tab] 听书,desc=显示“听书”Tab
-TopLive = switch,false,tag=[顶部Tab] 午夜飞行,desc=显示“午夜飞行”Tab
-TopAI = switch,false,tag=[顶部Tab] AI 写歌,desc=显示“AI 写歌”Tab
-BottomSimple = switch,true,tag=[底栏] 精简底栏,desc=仅保留首页、我的；关闭后保留服务端原始底栏
+LegacyHomeFramework = switch,true,tag=[首页框架] 旧版首页
+TopRcmd = switch,true,tag=[顶部Tab] 推荐
+TopMusic = switch,true,tag=[顶部Tab] 音乐
+TopPodcast = switch,false,tag=[顶部Tab] 播客
+TopBook = switch,false,tag=[顶部Tab] 听书
+TopLive = switch,false,tag=[顶部Tab] 午夜飞行
+TopAI = switch,false,tag=[顶部Tab] AI 写歌
+BottomSimple = switch,true,tag=[底栏] 精简底栏
 
-MineClean = switch,true,tag=[我的] 页面与侧栏净化,desc=移除会员推广、菜单副标题、运营提示及 AI 写歌/商城/云村有票/云推歌
+MineClean = switch,true,tag=[我的] 页面与侧栏净化
 
 [Rule]
 DOMAIN, iadmat.nosdn.127.net, REJECT

@@ -7,13 +7,13 @@
 #!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/china-mobile/icon.png
 
 [Argument]
-HideTopFamily = switch,false,tag=[顶部] 隐藏爱家,desc=隐藏首页顶部“爱家”Tab
-HideTopAge = switch,false,tag=[顶部] 隐藏网龄,desc=隐藏首页顶部“网龄”Tab
-HideTopPhone = switch,false,tag=[顶部] 隐藏手机,desc=隐藏首页顶部“手机”Tab
-HideTopNearby = switch,false,tag=[顶部] 隐藏附近厅,desc=隐藏首页顶部“附近厅”Tab
-HideTopAI = switch,false,tag=[顶部] 隐藏 AI,desc=隐藏首页顶部“AI尝鲜”Tab
-HideTopEnterprise = switch,false,tag=[顶部] 隐藏政企,desc=隐藏首页顶部“政企”Tab
-MineClean = switch,true,tag=[我的]基础净化,desc=移除我的页营销模块及已订业务页推荐商品
+HideTopFamily = switch,false,tag=[顶部] 隐藏爱家
+HideTopAge = switch,false,tag=[顶部] 隐藏网龄
+HideTopPhone = switch,false,tag=[顶部] 隐藏手机
+HideTopNearby = switch,false,tag=[顶部] 隐藏附近厅
+HideTopAI = switch,false,tag=[顶部] 隐藏 AI
+HideTopEnterprise = switch,false,tag=[顶部] 隐藏政企
+MineClean = switch,true,tag=[我的]基础净化
 
 [Rewrite]
 request if ${url} ~= /^https:\/\/client\.app\.coc\.10086\.cn\/biz-orange\/(?:DN\/(?:dropsAdverService\/getDropsAdverNew|homepagePopup\/getSortInfo|toast\/getToastRule)|DH\/toast\/august\/getToast|DA\/liveSuspension\/getPageCode)(?:\?.*)?$/ then reject_dict(200)

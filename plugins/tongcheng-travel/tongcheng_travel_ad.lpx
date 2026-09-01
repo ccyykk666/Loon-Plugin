@@ -19,5 +19,14 @@ request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appindexnew\/index\/
 # 首页与“我的”页面底部资讯流
 request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appfeeds\/recommend(?:\?.*)?$/ then reject(200)
 
+# 搜索框轮播推荐词
+request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appindexnew\/index\/getsearchboxtext(?:\?.*)?$/ then reject(200)
+
+# 搜索页热搜榜卡片
+request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appsearch\/check\/hotlist(?:\?.*)?$/ then reject(200)
+
+# 搜索页“搜索发现”与推荐词条
+request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appsearch\/check\/searchnearbyscenery(?:\?.*)?$/ then reject(200)
+
 [MITM]
 hostname = tcmobileapi.17usoft.com

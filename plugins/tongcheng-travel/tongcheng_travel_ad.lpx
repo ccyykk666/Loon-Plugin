@@ -1,5 +1,5 @@
 #!name=同程旅行去广告
-#!desc=移除同程旅行首页弹窗、新人券、二楼活动与资讯流
+#!desc=移除同程旅行广告
 #!author=ccyykk666[https://github.com/ccyykk666]
 #!system=iOS, iPadOS
 #!date=2026-09-01
@@ -18,6 +18,9 @@ request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appindexnew\/index\/
 
 # 首页与“我的”页面底部资讯流
 request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appfeeds\/recommend(?:\?.*)?$/ then reject(200)
+
+# 行程页“精选行程”独立推荐
+request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/apptravelassistant\/travel\/findRecommendTrip(?:\?.*)?$/ then reject(200)
 
 [MITM]
 hostname = tcmobileapi.17usoft.com

@@ -4,7 +4,7 @@
 #!system=iOS, iPadOS
 #!date=2026-09-01
 #!loon_version=3.5.1(983)
-#!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/tongcheng-travel/icon.png
+#!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/tongcheng-travel/icon_20260901.png
 
 [Rewrite]
 # 首页红包弹窗与顶部站内信
@@ -18,12 +18,6 @@ request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appindexnew\/index\/
 
 # 首页与“我的”页面底部资讯流
 request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appfeeds\/recommend(?:\?.*)?$/ then reject(200)
-
-# 实验：拦截首页布局配置，尝试触发不含“社区、领福利”的本地底栏
-request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appindexnew\/index\/getindexlayoutconfig(?:\?.*)?$/ then reject(200)
-
-# 行程页“精选行程”独立推荐
-request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/apptravelassistant\/travel\/findRecommendTrip(?:\?.*)?$/ then reject(200)
 
 [MITM]
 hostname = tcmobileapi.17usoft.com

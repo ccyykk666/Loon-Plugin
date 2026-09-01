@@ -1,0 +1,25 @@
+#!name=同程旅行去广告
+#!desc=移除同程旅行首页弹窗、新人券与二楼活动
+#!author=ccyykk666[https://github.com/ccyykk666]
+#!system=iOS, iPadOS
+#!date=2026-09-01
+#!loon_version=3.5.1(983)
+#!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/tongcheng-travel/icon.png
+
+[Argument]
+HidePopup = switch,true,tag=[首页] 隐藏弹窗与站内信
+HideNewMember = switch,true,tag=[首页] 隐藏新人券
+HideSecondFloor = switch,true,tag=[首页] 隐藏二楼活动
+
+[Rewrite]
+# 首页红包弹窗与顶部站内信
+request if ${HidePopup} == true && ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appindexnew\/index\/appPopup(?:\?.*)?$/ then reject(200)
+
+# 首页“新人限时加赠”
+request if ${HideNewMember} == true && ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appindexnew\/index\/newmemberzone(?:\?.*)?$/ then reject(200)
+
+# 首页下拉进入的“同程二楼”活动
+request if ${HideSecondFloor} == true && ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appindexnew\/index\/getsecondfloorlist(?:\?.*)?$/ then reject(200)
+
+[MITM]
+hostname = tcmobileapi.17usoft.com

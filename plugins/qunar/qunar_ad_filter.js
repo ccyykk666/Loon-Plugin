@@ -100,7 +100,7 @@ SOFTWARE.
   };
   const MAX_PACKET = 262144;
   const MAX_JSON = 2097152;
-  const QRT = /[?&]qrt=(p_homeRecommend|p_secondScreen_cards|pp_gw_u_myMainCard|pp_gw_u_myHeadInfo|innovation_popular_recommend|content_api_common_desert_damo_getPostList)(?:&|$)/;
+  const QRT = /[?&]qrt=(p_homeRecommend|p_secondScreen_cards|pp_gw_u_myMainCard|pp_gw_u_myHeadInfo|suggestion_operation_app|innovation_popular_recommend|innovation_rankinglist_head|innovation_single_rankinglist|content_api_common_desert_damo_getPostList|content_api_common_feed_open_postList)(?:&|$)/;
   function u32(bytes, offset) {
     return ((bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3]) >>> 0;
   }
@@ -228,8 +228,15 @@ SOFTWARE.
   }
   function clean(qrt, object) {
     const data = object && object.data;
-    if (!data || typeof data !== "object" || Array.isArray(data)) return false;
+    if (!data || typeof data !== "object") return false;
     if (object.bstatus && object.bstatus.code !== 0) return false;
+    // This endpoint returns the ranking tabs directly as data, not a data object.
+    if (qrt === "innovation_rankinglist_head") {
+      if (!Array.isArray(data) || !data.length) return false;
+      object.data = [];
+      return true;
+    }
+    if (Array.isArray(data)) return false;
     let changed = false;
     function clear(parent, key) {
       if (Array.isArray(parent[key]) && parent[key].length) { parent[key] = []; changed = true; }
@@ -256,14 +263,22 @@ SOFTWARE.
         remove(data, "rightQuickEntrance");
         remove(data, "freeMemberBanner2025");
         break;
+      case "suggestion_operation_app":
+        clear(data, "operationItems");
+        break;
       case "innovation_popular_recommend":
         clear(data, "advertisementList");
+        clear(data, "itemDataList");
+        break;
+      case "innovation_single_rankinglist":
+        clear(data, "rankLists");
         break;
       case "content_api_common_desert_damo_getPostList":
-        filter(data.infoFlowCard, "list", item => item && item.type === 18 &&
-          typeof item.gotoUrl === "string" && /^react\/open\?/.test(item.gotoUrl) &&
-          /[?&]hybridId=cmn_live_rn(?:&|$)/.test(item.gotoUrl) &&
-          /[?&]pageName=LiveHome(?:&|$)/.test(item.gotoUrl));
+        if (data.infoFlowCard && typeof data.infoFlowCard === "object") clear(data.infoFlowCard, "list");
+        break;
+      case "content_api_common_feed_open_postList":
+        // Shared by Mine and Trip. The client may retain its local title/empty view.
+        if (!data.bstatus || data.bstatus.code === 0) clear(data, "list");
         break;
     }
     return changed;

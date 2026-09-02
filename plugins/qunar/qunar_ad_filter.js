@@ -264,6 +264,8 @@ SOFTWARE.
         break;
       case "pp_gw_u_myMainCard":
         if (data.financial && typeof data.financial === "object") clear(data.financial, "cards");
+        // The Mine page enables its pull-down second floor only when down.url exists.
+        remove(data, "down");
         break;
       case "pp_gw_u_myHeadInfo":
         remove(data, "rightQuickEntrance");

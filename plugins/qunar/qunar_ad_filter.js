@@ -100,7 +100,7 @@ SOFTWARE.
   };
   const MAX_PACKET = 262144;
   const MAX_JSON = 2097152;
-  const QRT = /[?&]qrt=(p_homeRecommend|p_secondScreen_cards|pp_gw_u_myMainCard|pp_gw_u_myHeadInfo|suggestion_operation_app|innovation_popular_recommend|innovation_rankinglist_head|innovation_single_rankinglist|content_api_common_desert_damo_getPostList|content_api_common_feed_open_postList)(?:&|$)/;
+  const QRT = /[?&]qrt=(p_homeRecommend|qpub_animateSloganView|p_secondScreen_cards|pp_gw_u_myMainCard|pp_gw_u_myHeadInfo|suggestion_operation_app|innovation_popular_recommend|innovation_rankinglist_head|innovation_single_rankinglist|content_api_common_desert_damo_getPostList|content_api_common_feed_open_postList)(?:&|$)/;
   function u32(bytes, offset) {
     return ((bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3]) >>> 0;
   }
@@ -252,6 +252,12 @@ SOFTWARE.
     switch (qrt) {
       case "p_homeRecommend":
         clear(data, "recList");
+        break;
+      case "qpub_animateSloganView":
+        // The home pull-down ad is activated only with a valid image and jump URL.
+        for (const key of ["imgUrl", "jumpUrl"]) {
+          if (typeof data[key] === "string" && data[key].length) { data[key] = ""; changed = true; }
+        }
         break;
       case "p_secondScreen_cards":
         filter(data, "displayCards", item => item && item.itemType === 19 && item.fiveMarketing);

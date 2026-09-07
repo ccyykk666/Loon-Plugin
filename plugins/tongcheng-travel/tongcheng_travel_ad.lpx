@@ -2,11 +2,14 @@
 #!desc=移除同程旅行广告
 #!author=ccyykk666[https://github.com/ccyykk666]
 #!system=iOS, iPadOS
-#!date=2026-09-01
+#!date=2026-09-07
 #!loon_version=3.5.1(983)
 #!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/tongcheng-travel/icon_20260901.png
 
 [Rewrite]
+# “我的”页优惠券到期提醒弹窗
+request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/userextend\/member\/screenPop(?:\?.*)?$/ then reject(200)
+
 # 首页红包弹窗与顶部站内信
 request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appindexnew\/index\/appPopup(?:\?.*)?$/ then reject(200)
 

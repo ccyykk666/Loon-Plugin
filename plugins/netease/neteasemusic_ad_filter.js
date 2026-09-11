@@ -551,19 +551,19 @@ function replaceData(payload, path, data) {
   return true;
 }
 
+function cleanCommentList(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return false;
+  const changed = cleanCommentTree(data) > 0;
+  if (data.voiceCommentEnabled === false) return changed;
+  // Experimental: whether comment-list rendering reads this flag is unverified.
+  data.voiceCommentEnabled = false;
+  return true;
+}
+
 const HANDLERS = {
   "/comments/activity/airborne/enable/voice": (payload) => {
     if (payload.data?.voiceCommentEnabled !== true) return false;
     payload.data.voiceCommentEnabled = false;
-    return true;
-  },
-  "/experiment/group/batch/get": (payload) => {
-    if (!Array.isArray(payload.data)) return false;
-    const filtered = payload.data.filter(
-      (experiment) => experiment?.abtestname !== "voice-comment",
-    );
-    if (filtered.length === payload.data.length) return false;
-    payload.data = filtered;
     return true;
   },
   "/batch": (payload) => {
@@ -591,7 +591,7 @@ const HANDLERS = {
       "/api/v2/resource/comments",
       "/api/v2/resource/comments/preload",
     ]) {
-      changed = cleanCommentTree(payload[path]?.data) > 0 || changed;
+      changed = cleanCommentList(payload[path]?.data) || changed;
     }
     for (const path of [
       "/api/comment/feed/inserted/resources",
@@ -616,7 +616,7 @@ const HANDLERS = {
     return changed;
   },
   "/v2/resource/comments": (payload) =>
-    cleanCommentTree(payload.data) > 0,
+    cleanCommentList(payload.data),
   "/v2/resource/comment/floor/get": (payload) =>
     cleanCommentTree(payload.data) > 0,
   "/resource/comments/reply/preload": (payload) =>

@@ -553,11 +553,21 @@ function replaceData(payload, path, data) {
 
 function cleanCommentList(data) {
   if (!data || typeof data !== "object" || Array.isArray(data)) return false;
-  const changed = cleanCommentTree(data) > 0;
-  if (data.voiceCommentEnabled === false) return changed;
-  // Experimental: whether comment-list rendering reads this flag is unverified.
-  data.voiceCommentEnabled = false;
-  return true;
+  let changed = false;
+  if (Array.isArray(data.comments)) {
+    // Check only the comment itself, not voice comments quoted in beReplied.
+    const comments = data.comments.filter(
+      (comment) =>
+        !comment?.voiceNosKey &&
+        !comment?.voiceWhaleId &&
+        !(comment?.voiceDurationMillSecond > 0),
+    );
+    if (comments.length !== data.comments.length) {
+      data.comments = comments;
+      changed = true;
+    }
+  }
+  return cleanCommentTree(data) > 0 || changed;
 }
 
 const HANDLERS = {

@@ -298,6 +298,31 @@ function cleanCommentTree(value) {
     for (const item of value) changes += cleanCommentTree(item);
     return changes;
   }
+  if (
+    value.voiceNosKey ||
+    value.voiceWhaleId ||
+    value.voiceDurationMillSecond > 0 ||
+    value.voiceExt != null
+  ) {
+    for (const field of ["voiceNosKey", "voiceWhaleId", "voiceExt"]) {
+      if (field in value && value[field] !== null) {
+        value[field] = null;
+        changes += 1;
+      }
+    }
+    if ("voiceDurationMillSecond" in value && value.voiceDurationMillSecond !== 0) {
+      value.voiceDurationMillSecond = 0;
+      changes += 1;
+    }
+    if (value.contentResource?.resourceType === 1014) {
+      value.contentResource = null;
+      changes += 1;
+    }
+    if (value.extInfo && "voiceClientExtInfo" in value.extInfo) {
+      delete value.extInfo.voiceClientExtInfo;
+      changes += 1;
+    }
+  }
   if (value.user && typeof value.user === "object") {
     if (value.user.followed === false) {
       value.user.followed = true;
@@ -557,14 +582,25 @@ const HANDLERS = {
     payload.data.voiceCommentEnabled = false;
     return true;
   },
+  "/comment/voice/sing-join/batch-check": (payload) => {
+    let changed = false;
+    if (Array.isArray(payload.data?.guide) && payload.data.guide.length) {
+      payload.data.guide = [];
+      changed = true;
+    }
+    if (Array.isArray(payload.trp?.rules)) {
+      const filtered = payload.trp.rules.filter(
+        (rule) => !String(rule).startsWith("voice_comment_guide::"),
+      );
+      if (filtered.length !== payload.trp.rules.length) {
+        payload.trp.rules = filtered;
+        changed = true;
+      }
+    }
+    return changed;
+  },
   "/batch": (payload) => {
     let changed = false;
-    changed =
-      replaceData(payload, "/api/comment/tips/v2/get", {
-        count: 0,
-        offset: 0,
-        records: [],
-      }) || changed;
     changed =
       replaceData(payload, "/api/social/event/bff/ad/resources", {}) || changed;
     changed =

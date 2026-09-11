@@ -41,30 +41,40 @@
     return value === true || value === "true" || value === 1 || value === "1";
   }
 
-  var SBOX = [
-    0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
-    0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
-    0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
-    0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,
-    0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,
-    0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
-    0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,
-    0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,
-    0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
-    0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,
-    0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,
-    0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
-    0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
-    0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
-    0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
-    0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16
-  ];
+  var isNavigationRequest = /\/DN\/init\/getNavigation(?:\?|$)/.test(url);
+  if (
+    isNavigationRequest &&
+    !enabled("HideTopFamily") &&
+    !enabled("HideTopAge") &&
+    !enabled("HideTopPhone") &&
+    !enabled("HideTopNearby") &&
+    !enabled("HideTopAI") &&
+    !enabled("HideTopEnterprise")
+  ) {
+    $done({});
+    return;
+  }
 
-  var INV_SBOX = (function () {
-    var inverse = new Array(256);
-    for (var i = 0; i < 256; i++) inverse[SBOX[i]] = i;
-    return inverse;
-  })();
+  var isMyPageRequest = /\/DN\/myPageNew\/getMyPageNew(?:\?|$)/.test(url);
+  if (isMyPageRequest && !enabled("MineClean")) {
+    $done({});
+    return;
+  }
+
+  var isRechargeRequest = /\/i\/v1\/cust\/(?:aiMainQry|iopBatchQry)\//.test(url);
+  var isH5Request =
+    /\/(?:DH\/(?:message_query\/message\/query\/list|myCardVoucher\/getBannerList)|DA\/commonBoard\/getCommonBoard)(?:\?|$)/.test(url);
+  var xPen = isRechargeRequest
+    ? ""
+    : String(getHeader($response.headers, "x-pen"));
+
+  if (
+    (!isRechargeRequest && isH5Request && xPen !== "1") ||
+    (!isRechargeRequest && !isH5Request && xPen !== "14")
+  ) {
+    $done({});
+    return;
+  }
 
   function utf8Encode(text) {
     var bytes = [];
@@ -174,184 +184,22 @@
     return text;
   }
 
-  function xtime(value) {
-    return ((value << 1) ^ ((value & 0x80) ? 0x11b : 0)) & 0xff;
-  }
-
-  function expandKey(key) {
-    if (key.length !== 16) throw new Error("key");
-    var expanded = key.slice();
-    var generated = 16;
-    var rcon = 1;
-    var temp = new Array(4);
-    while (generated < 176) {
-      for (var i = 0; i < 4; i++) temp[i] = expanded[generated - 4 + i];
-      if (generated % 16 === 0) {
-        var first = temp.shift();
-        temp.push(first);
-        for (i = 0; i < 4; i++) temp[i] = SBOX[temp[i]];
-        temp[0] ^= rcon;
-        rcon = xtime(rcon);
-      }
-      for (i = 0; i < 4; i++) {
-        expanded[generated] = expanded[generated - 16] ^ temp[i];
-        generated++;
-      }
-    }
-    return expanded;
-  }
-
-  function addRoundKey(state, expanded, offset) {
-    for (var i = 0; i < 16; i++) state[i] ^= expanded[offset + i];
-  }
-
-  function substitute(state, box) {
-    for (var i = 0; i < 16; i++) state[i] = box[state[i]];
-  }
-
-  function shiftRows(state, inverse) {
-    var value;
-    if (inverse) {
-      value = state[13];
-      state[13] = state[9];
-      state[9] = state[5];
-      state[5] = state[1];
-      state[1] = value;
-      value = state[2];
-      state[2] = state[10];
-      state[10] = value;
-      value = state[6];
-      state[6] = state[14];
-      state[14] = value;
-      value = state[3];
-      state[3] = state[7];
-      state[7] = state[11];
-      state[11] = state[15];
-      state[15] = value;
-    } else {
-      value = state[1];
-      state[1] = state[5];
-      state[5] = state[9];
-      state[9] = state[13];
-      state[13] = value;
-      value = state[2];
-      state[2] = state[10];
-      state[10] = value;
-      value = state[6];
-      state[6] = state[14];
-      state[14] = value;
-      value = state[15];
-      state[15] = state[11];
-      state[11] = state[7];
-      state[7] = state[3];
-      state[3] = value;
-    }
-  }
-
-  function mixColumns(state) {
-    for (var column = 0; column < 4; column++) {
-      var offset = column * 4;
-      var a0 = state[offset];
-      var a1 = state[offset + 1];
-      var a2 = state[offset + 2];
-      var a3 = state[offset + 3];
-      var all = a0 ^ a1 ^ a2 ^ a3;
-      state[offset] ^= all ^ xtime(a0 ^ a1);
-      state[offset + 1] ^= all ^ xtime(a1 ^ a2);
-      state[offset + 2] ^= all ^ xtime(a2 ^ a3);
-      state[offset + 3] ^= all ^ xtime(a3 ^ a0);
-    }
-  }
-
-  function inverseMixColumns(state) {
-    for (var column = 0; column < 4; column++) {
-      var offset = column * 4;
-      var a0 = state[offset];
-      var a1 = state[offset + 1];
-      var a2 = state[offset + 2];
-      var a3 = state[offset + 3];
-      var u = xtime(xtime(a0 ^ a2));
-      var v = xtime(xtime(a1 ^ a3));
-      a0 ^= u;
-      a1 ^= v;
-      a2 ^= u;
-      a3 ^= v;
-      var all = a0 ^ a1 ^ a2 ^ a3;
-      state[offset] = a0 ^ all ^ xtime(a0 ^ a1);
-      state[offset + 1] = a1 ^ all ^ xtime(a1 ^ a2);
-      state[offset + 2] = a2 ^ all ^ xtime(a2 ^ a3);
-      state[offset + 3] = a3 ^ all ^ xtime(a3 ^ a0);
-    }
-  }
-
-  function encryptBlock(state, expanded) {
-    addRoundKey(state, expanded, 0);
-    for (var round = 1; round < 10; round++) {
-      substitute(state, SBOX);
-      shiftRows(state, false);
-      mixColumns(state);
-      addRoundKey(state, expanded, round * 16);
-    }
-    substitute(state, SBOX);
-    shiftRows(state, false);
-    addRoundKey(state, expanded, 160);
-    return state;
-  }
-
-  function decryptBlock(state, expanded) {
-    addRoundKey(state, expanded, 160);
-    for (var round = 9; round > 0; round--) {
-      shiftRows(state, true);
-      substitute(state, INV_SBOX);
-      addRoundKey(state, expanded, round * 16);
-      inverseMixColumns(state);
-    }
-    shiftRows(state, true);
-    substitute(state, INV_SBOX);
-    addRoundKey(state, expanded, 0);
-    return state;
-  }
-
   function aesCbcEncrypt(bytes, key, iv) {
-    var padding = 16 - (bytes.length % 16);
-    var length = bytes.length + padding;
-    var expanded = expandKey(key);
-    var output = new Array(length);
-    var state = new Array(16);
-    for (var offset = 0; offset < length; offset += 16) {
-      for (var i = 0; i < 16; i++) {
-        var value = offset + i < bytes.length ? bytes[offset + i] : padding;
-        state[i] = value ^ (
-          offset === 0 ? iv[i] : output[offset - 16 + i]
-        );
-      }
-      encryptBlock(state, expanded);
-      for (i = 0; i < 16; i++) output[offset + i] = state[i];
-    }
-    return output;
+    return $crypto.aes.encrypt(new Uint8Array(bytes), {
+      mode: "cbc",
+      key: new Uint8Array(key),
+      iv: new Uint8Array(iv),
+      padding: "pkcs7"
+    }).ciphertext;
   }
 
   function aesCbcDecrypt(bytes, key, iv) {
-    if (!bytes.length || bytes.length % 16 !== 0) throw new Error("cipher");
-    var expanded = expandKey(key);
-    var output = new Array(bytes.length);
-    var state = new Array(16);
-    for (var offset = 0; offset < bytes.length; offset += 16) {
-      for (var i = 0; i < 16; i++) state[i] = bytes[offset + i];
-      decryptBlock(state, expanded);
-      for (i = 0; i < 16; i++) {
-        output[offset + i] = state[i] ^ (
-          offset === 0 ? iv[i] : bytes[offset - 16 + i]
-        );
-      }
-    }
-    var padding = output[output.length - 1];
-    if (padding < 1 || padding > 16 || padding > output.length) throw new Error("padding");
-    for (var p = output.length - padding; p < output.length; p++) {
-      if (output[p] !== padding) throw new Error("padding");
-    }
-    output.length -= padding;
-    return output;
+    return $crypto.aes.decrypt(new Uint8Array(bytes), {
+      mode: "cbc",
+      key: new Uint8Array(key),
+      iv: new Uint8Array(iv),
+      padding: "pkcs7"
+    });
   }
 
   function leftRotate(value, count) {
@@ -884,7 +732,7 @@
   }
 
   try {
-    if (/\/i\/v1\/cust\/(?:aiMainQry|iopBatchQry)\//.test(url)) {
+    if (isRechargeRequest) {
       var rechargeEnvelope = JSON.parse(responseBody);
       var rechargeOutParam =
         rechargeEnvelope &&
@@ -921,10 +769,7 @@
       return;
     }
 
-    if (
-      /\/(?:DH\/(?:message_query\/message\/query\/list|myCardVoucher\/getBannerList)|DA\/commonBoard\/getCommonBoard)(?:\?|$)/.test(url) &&
-      String(getHeader($response.headers, "x-pen")) === "1"
-    ) {
+    if (isH5Request) {
       var messageEnvelope = JSON.parse(responseBody);
       if (!messageEnvelope || typeof messageEnvelope.body !== "string") {
         $done({});
@@ -953,11 +798,6 @@
       );
       var messageBody = JSON.stringify(messageEnvelope);
       $done(signedResult(messageBody));
-      return;
-    }
-
-    if (String(getHeader($response.headers, "x-pen")) !== "14") {
-      $done({});
       return;
     }
 

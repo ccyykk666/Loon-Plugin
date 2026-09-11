@@ -4,7 +4,7 @@
 #!system=iOS, iPadOS
 #!loon_version=3.5.1(983)
 #!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/jingdong/icon.png
-#!date=2026-08-29
+#!date=2026-09-11
 
 [Argument]
 HomeClean=switch, true, tag=1. 首页净化
@@ -16,23 +16,18 @@ ProductClean=switch, true, tag=4. 商品页净化
 AND, ((DOMAIN, api.m.jd.com), (PROTOCOL, TCP)), REJECT-NO-DROP
 
 [Rewrite]
-# 基础配置与独立推荐接口
 response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?functionId=basicConfig/ then response.json.replace("data.JDMessage.socketmonitor.isSocketEstablishedAhead", 0) | response.json.replace("data.JDMessage.socketmonitor.isSocketReport", 0) | response.json.replace("data.JDHttpToolKit.httpdns.httpdns", 0)
-# 底部 Tab 促销浮岛：过滤“逛”位置及覆盖“消息”位置的商品广告
 response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=getBubbleInfo(?:&|$)/ then response.json.jq(".result |= map(select(.position != \"find\" and .extraMap.tab != \"Promotion\")) | if (.result | length) == 0 then .islandConfig = false else . end")
 response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?functionId=cart/ then response.json.delete("cartLocationMap.loc_emptyCartFloor2") | response.json.delete("emptyCartRecommendFloor")
 request if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?functionId=(?:cartCouponRecommendGoods|intelligentRecommendSku|searchBoxWord|stationPullService)/ then reject_dict(200)
 
-# 页面固定字段
 response if ${HomeClean} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=getTabHomeInfo(?:&|$)/ then response.json.delete("result.iconInfo") | response.json.delete("result.roofTop")
 response if ${OrderAds} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=newPurchaseWareCheck(?:&|$)/ then response.json.delete("purchaseOrder") | response.json.replace("hitOrderHighPriceNewStyle", 0)
 response if ${OrderAds} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=getGiftBuyEntryInfo(?:&|$)/ then response.json.replace("newMyOrder", false) | response.json.replace("data.newMyOrder", false)
 response if ${ProfileClean} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/(?:api|client\.action)\?(?:[^#]*&)?functionId=personalCenter(?:&|$)/ then response.json.delete("data.operationBanner")
 
 [Script]
-# 京东页面响应净化，兼容 functionId 位于任意查询参数位置
 response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=(?:clickRecommend|deliverLayer|hotSearchTerms|myOrderInfo|myjdSetBusiness|newUserAllOrderList|orderTrackBusiness|personinfoBusiness|queryEvaluateFloors|queryFloorDetailInfo|queryListAsyncInfo|querySmallVideoWindow|start|uniformRecommend|uniformRecommend6|wareBusiness|welcomeHome)(?:&|$)/i then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/jingdong/Jingdong_remove_ads.js", {${HomeClean}, ${OrderAds}, ${ProfileClean}, ${ProductClean}}) with tag="jingdong_noad", timeout=20, requires_body=true
-# 个人档案资讯流兼容 /api 和 /client.action 两种路径
 response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/(?:api|client\.action)\?(?:[^#]*&)?functionId=queryCircleInfo(?:&|$)/i then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/jingdong/Jingdong_remove_ads.js", {${ProfileClean}}) with tag="jingdong_profile_detail_noad", timeout=20, requires_body=true
 
 [MITM]

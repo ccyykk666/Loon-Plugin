@@ -1,5 +1,3 @@
-// 京东响应净化
-
 const url = $request.url;
 const functionId = url.match(/[?&]functionId=([^&#]*)/)?.[1] || "";
 const options = {
@@ -54,7 +52,6 @@ if (!$response.body) {
     options.OrderAds &&
     ["deliverLayer", "orderTrackBusiness"].includes(functionId)
   ) {
-    // 物流页面：优惠横幅及地图上方的寄件推广条。
     if (obj?.bannerInfo) delete obj.bannerInfo;
     if (obj?.floors?.length > 0) {
       obj.floors = obj.floors.filter(
@@ -70,7 +67,6 @@ if (!$response.body) {
       }
     }
   } else if (options.OrderAds && functionId === "myOrderInfo") {
-    // 订单页面：横幅、常购推荐、PLUS 推广和精选特惠。
     const cleanOrderFloors = (floors) => {
       if (!Array.isArray(floors)) return floors;
 
@@ -112,11 +108,9 @@ if (!$response.body) {
       return newFloors;
     };
 
-    // 兼容根节点及 data.floors 两种楼层结构。
     obj.floors = cleanOrderFloors(obj?.floors);
     if (obj?.data) obj.data.floors = cleanOrderFloors(obj.data.floors);
   } else if (options.OrderAds && functionId === "queryFloorDetailInfo") {
-    // 订单详情页：内容种草、PLUS 和专属权益楼层。
     const removeFloorIds = [
       "async_circleTopicFloor",
       "async_recommendFloor",
@@ -141,17 +135,14 @@ if (!$response.body) {
       });
     }
   } else if (options.OrderAds && functionId === "queryListAsyncInfo") {
-    // 订单卡片下方的优惠券、PLUS 权益等营销引力条。
     if (obj?.data && typeof obj.data === "object") {
       obj.data.guide = {};
     }
   } else if (options.OrderAds && functionId === "newUserAllOrderList") {
-    // 订单页“秒送”旁的外卖图标，以及“服务”旁的搬家轮播图。
     const navigationTabs = obj?.listNavigationTabList;
     if (Array.isArray(navigationTabs)) {
       for (const tab of navigationTabs) {
         if (String(tab?.tabId) === "2") {
-          // 保留“秒送”Tab，只清空右侧图标和动画素材。
           tab.tabIconUrl = "";
           tab.tabIconDarkUrl = "";
           tab.tabIconWidth = 0;
@@ -161,7 +152,6 @@ if (!$response.body) {
           tab.iosDeliveryLottieUrl = "";
           tab.showDeliveryClose = false;
         } else if (String(tab?.tabId) === "3") {
-          // 保留“服务”Tab，只清空右侧轮播营销图。
           tab.tabIconUrl = "";
           tab.tabIconDarkUrl = "";
           tab.tabIconWidth = 0;
@@ -173,7 +163,6 @@ if (!$response.body) {
       }
     }
 
-    // 订单卡片中的“一键评分”和按钮上方的“全屋保障”推广条。
     for (const order of obj?.orderList || []) {
       const guide = order?.operateGuideFloor;
       if (
@@ -185,7 +174,6 @@ if (!$response.body) {
         delete order.operateGuideFloor;
       }
 
-      // 保留“评价晒单”按钮，只去掉按钮上方的优惠券推广标签。
       for (const button of order?.buttons || []) {
         if (
           button?.btnEvent?.clickPoint === "OrderList_CommentsShare" &&
@@ -200,7 +188,6 @@ if (!$response.body) {
       }
     }
   } else if (options.ProfileClean && functionId === "personinfoBusiness") {
-    // “我的”页面。
     const removeFloorIds = [
       "bigSaleFloor",
       "buyOften",
@@ -225,15 +212,11 @@ if (!$response.body) {
         if (floor?.mId === "marketTNFloorNew") {
           const tnData = floor?.data?.tnData;
 
-          // nodes 是钱包、京东服务和互动游戏整块；
-          // cardListStatic 是抽奖开红包。保留行为统计和物流卡片。
           if (Array.isArray(tnData?.nodes) || Array.isArray(tnData?.cardListStatic)) {
             continue;
           }
 
-          // 头像卡右侧的学生会员推广，保留头像、会员等级等账户信息。
           if (tnData?.concisePlusInfo) delete tnData.concisePlusInfo;
-          // 左上角“点评 每日签到”滚动快讯。
           if (tnData?.newsInfo) delete tnData.newsInfo;
         } else if (floor?.mId === "basefloorinfo") {
           if (floor?.data?.commonPopup) delete floor.data.commonPopup;
@@ -260,7 +243,6 @@ if (!$response.body) {
     options.ProfileClean &&
     functionId === "queryCircleInfo"
   ) {
-    // 档案页底部双列资讯推荐流。
     if (Array.isArray(obj?.wareInfoList)) obj.wareInfoList = [];
     if (Object.prototype.hasOwnProperty.call(obj, "hasNextPage")) {
       obj.hasNextPage = false;
@@ -272,7 +254,6 @@ if (!$response.body) {
     options.ProfileClean &&
     functionId === "myjdSetBusiness"
   ) {
-    // 设置页“必备工具”是独立楼层，可整层删除。
     if (Array.isArray(obj?.floors)) {
       obj.floors = obj.floors.filter((floor) => {
         const nodes = floor?.data?.nodes;
@@ -282,8 +263,6 @@ if (!$response.body) {
         );
       });
 
-      // 清空账号设置、功能设置等菜单的右侧说明和红点；
-      // 保留名称、图标及跳转。地区项由客户端维护，不做修改。
       for (const floor of obj.floors) {
         const templateId = String(floor?.tnConfig?.templateId || "");
         if (!templateId.includes("jdmine_setting_menu")) continue;
@@ -303,7 +282,6 @@ if (!$response.body) {
       }
     }
   } else if (functionId === "start") {
-    // 开屏广告。
     if (obj?.images?.length > 0) obj.images = [];
     if (Object.prototype.hasOwnProperty.call(obj, "showTimesDaily")) {
       obj.showTimesDaily = 0;
@@ -312,7 +290,6 @@ if (!$response.body) {
     options.HomeClean &&
     functionId === "welcomeHome"
   ) {
-    // 首页浮层、运营活动板块及顶部多余 Tab。
     const removeTypes = [
       "bottomXview",
       "dynamicIcon",
@@ -333,7 +310,6 @@ if (!$response.body) {
     if (obj?.webViewFloorList?.length > 0) obj.webViewFloorList = [];
     if (obj?.promotionTabs) delete obj.promotionTabs;
 
-    // 首页顶部“秒送”Tab 右侧的外卖图片角标。
     const topTabs = obj?.multipleTabs?.content?.data;
     if (Array.isArray(topTabs)) {
       const deliveryTab = topTabs.find(
@@ -347,20 +323,17 @@ if (!$response.body) {
         deliveryTab.labelWidth = 40;
       }
 
-      // 首页顶部“特价”和“新品”均为服务端下发的独立 Tab。
       obj.multipleTabs.content.data = topTabs.filter(
         (tab) => ![482858, 482857].includes(Number(tab?.id))
       );
     }
   } else if (options.HomeClean && functionId === "clickRecommend") {
-    // 搜索结果中使用独立模板渲染的 AI 推荐卡。
     if (obj?.data?.length > 0) {
       obj.data = obj.data.filter(
         (item) => !(item?.insertBizData && item?.tnTemplate)
       );
     }
   } else if (options.HomeClean && functionId === "hotSearchTerms") {
-    // 首页顶部“作业帮”商业热词。
     if (obj?.data?.length > 0) {
       for (let group of obj.data) {
         if (!Array.isArray(group?.hotSearchContent)) continue;
@@ -376,16 +349,12 @@ if (!$response.body) {
     options.ProductClean &&
     functionId === "querySmallVideoWindow"
   ) {
-    // 商品页右上角自动出现的小视频窗口。
     if (obj?.result?.contents?.length > 0) obj.result.contents = [];
   } else if (options.ProductClean && functionId === "wareBusiness") {
     if (options.ProductClean) {
-      // “直播讲解”和“红包雨”共用 liveInfo 浮层数据。
       const data = obj?.commonBaseInfo?.data;
       if (data?.liveInfo) delete data.liveInfo;
-      // 商品页右侧“活动小助手/国家补贴”等营销助手浮窗。
       if (data?.floatingAssistant) delete data.floatingAssistant;
-      // 从主响应关闭右下角 AI 浮位，避免清空图标后残留灰色容器。
       if (data) {
         if (Object.prototype.hasOwnProperty.call(data, "aigcFlag")) {
           data.aigcFlag = false;
@@ -404,7 +373,6 @@ if (!$response.body) {
         obj.shareData.statusInfo.livewindow = false;
       }
 
-      // “大家评”中的 AI 评价概要，不影响商品主图的 AI 使用说明。
       if (data?.daJiaPing?.floorQoList?.length > 0) {
         for (let item of data.daJiaPing.floorQoList) {
           if (Object.prototype.hasOwnProperty.call(item, "aiOverview")) {
@@ -415,12 +383,10 @@ if (!$response.body) {
     }
 
     if (options.ProductClean && obj?.floors?.length > 0) {
-      // “为你推荐”和“潮流配件馆”同属 bpyxlc14 融合楼层。
       obj.floors = obj.floors.filter((floor) => floor?.mId !== "bpyxlc14");
     }
 
     if (obj?.floors?.length > 0) {
-      // 商品详情页会员权益、赠礼、活动及社区种草等非核心推广楼层。
       const removeFloorIds = [
         "ActivityFloor",
         "bpGiveGifts",
@@ -434,7 +400,6 @@ if (!$response.body) {
       );
     }
   } else if (options.ProductClean && functionId === "queryEvaluateFloors") {
-    // 评价页“AI 全网评”，保留普通评价、标签和晒单。
     const result = obj?.result;
     if (result && typeof result === "object") {
       for (let section of Object.values(result)) {
@@ -457,7 +422,6 @@ if (!$response.body) {
       }
     }
   } else if (functionId === "uniformRecommend6") {
-    // 购物车 source=6 推荐商品流。
     clearRecommendResponse(obj);
   } else if (functionId === "uniformRecommend") {
     const isOrderRecommend =

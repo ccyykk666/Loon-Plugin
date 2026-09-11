@@ -566,7 +566,6 @@ function cleanCommentList(data) {
   if (!data || typeof data !== "object" || Array.isArray(data)) return false;
   let changed = false;
   if (Array.isArray(data.comments)) {
-    // Check only the comment itself, not voice comments quoted in beReplied.
     const comments = data.comments.filter(
       (comment) =>
         !comment?.voiceNosKey &&
@@ -597,7 +596,6 @@ const HANDLERS = {
     if (!data.songList.every(
       (song) => data.sourceMap?.[song?.id] === "curlist_scene_more_rcmd",
     )) return false;
-    // Match the server's empty recommendation response for this scene.
     data.songList = null;
     data.algMap = null;
     data.sourceMap = null;

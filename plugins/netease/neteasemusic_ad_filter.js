@@ -449,23 +449,6 @@ function cleanClientExperiments(payload) {
     payload.data.splice(index, 1);
     changed = true;
   }
-  if (payload.code === 200) {
-    for (const [expName, expGroupName] of [
-      ["FH-SeparateTrackBlockSwitch0611", "t1"],
-      ["Vocal_Adjustment_optimization_ios0414", "c"],
-    ]) {
-      const experiments = payload.data.filter((item) => item?.expName === expName);
-      if (!experiments.length) {
-        payload.data.push({ expName, expGroupName, status: 0, clientConfig: {} });
-        changed = true;
-      } else {
-        for (const experiment of experiments) {
-          changed = replaceValue(experiment, "expGroupName", expGroupName) || changed;
-          changed = replaceValue(experiment, "status", 0) || changed;
-        }
-      }
-    }
-  }
   return changed;
 }
 

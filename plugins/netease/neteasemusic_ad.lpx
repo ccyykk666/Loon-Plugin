@@ -10,7 +10,7 @@
 LegacyHomeFramework = switch,true,tag=[首页框架] 旧版首页
 TopRcmd = switch,true,tag=[顶栏] 推荐
 TopMusic = switch,true,tag=[顶栏] 音乐
-TopPodcast = switch,false,tag=[顶栏] 播客
+TopPodcast = switch,true,tag=[顶栏] 播客
 TopBook = switch,false,tag=[顶栏] 听书
 TopLive = switch,false,tag=[顶栏] 午夜飞行
 TopAI = switch,false,tag=[顶栏] AI 写歌

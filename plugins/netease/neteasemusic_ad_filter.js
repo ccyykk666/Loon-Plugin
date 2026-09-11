@@ -18,7 +18,7 @@ const SETTINGS = {
   LegacyHomeFramework: readSetting("LegacyHomeFramework", true),
   TopRcmd: readSetting("TopRcmd", true),
   TopMusic: readSetting("TopMusic", true),
-  TopPodcast: readSetting("TopPodcast", false),
+  TopPodcast: readSetting("TopPodcast", true),
   TopBook: readSetting("TopBook", false),
   TopLive: readSetting("TopLive", false),
   TopAI: readSetting("TopAI", false),

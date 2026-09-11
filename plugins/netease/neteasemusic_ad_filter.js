@@ -449,14 +449,6 @@ function cleanClientExperiments(payload) {
     payload.data.splice(index, 1);
     changed = true;
   }
-  for (const experiment of payload.data) {
-    if (experiment?.expName !== "hy_song_VipLogo") continue;
-    const config = experiment.clientConfig;
-    if (typeof config?.QualityLogo !== "string" || config.QualityLogo === "")
-      continue;
-    config.QualityLogo = "";
-    changed = true;
-  }
   return changed;
 }
 
@@ -596,7 +588,7 @@ const HANDLERS = {
     if (!data.songList.every(
       (song) => data.sourceMap?.[song?.id] === "curlist_scene_more_rcmd",
     )) return false;
-    data.songList = null;
+    data.songList = [];
     data.algMap = null;
     data.sourceMap = null;
     data.offset = 0;

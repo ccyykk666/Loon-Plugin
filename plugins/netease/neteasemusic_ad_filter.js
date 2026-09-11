@@ -484,7 +484,8 @@ function cleanSongQuality(privilege) {
   if (!privilege || typeof privilege !== "object") return false;
   let changed = false;
   if (Number.isSafeInteger(privilege.flag) && privilege.flag >= 0) {
-    const qualityBits = (Math.floor(privilege.flag / 65536) % 8) * 65536;
+    const qualityBits = (Math.floor(privilege.flag / 65536) % 8) * 65536 +
+      (Math.floor(privilege.flag / 4096) % 2) * 4096;
     if (qualityBits) {
       privilege.flag -= qualityBits;
       changed = true;
@@ -829,6 +830,13 @@ const HANDLERS = {
   "/rtrs/abt/front/expinfo/list": cleanClientExperiments,
   "/rtrs/abt/web/expinfo/list": cleanWebExperiments,
   "/v3/song/detail": cleanSongDetail,
+  "/playlist/privilege": (payload) => {
+    if (!Array.isArray(payload.data)) return false;
+    let changed = false;
+    for (const privilege of payload.data)
+      changed = cleanSongQuality(privilege) || changed;
+    return changed;
+  },
   "/song/enhance/privilege": cleanPrivilegeVipBadges,
   "/song/enhance/player/url/v1": cleanPrivilegeVipBadges,
   "/v3/discovery/recommend/songs": cleanDailyRecommendation,

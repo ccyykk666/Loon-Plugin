@@ -1,5 +1,6 @@
 /*! Original Copyright (c) 2026 Yu9191. Licensed under the MIT License. */
 
+(() => {
 const ARGUMENTS =
   globalThis.$argument && typeof globalThis.$argument === "object"
     ? globalThis.$argument
@@ -22,10 +23,19 @@ const SETTINGS = {
   TopLive: readSetting("TopLive", false),
   TopAI: readSetting("TopAI", false),
   MineClean: readSetting("MineClean", true),
+  HideSongQuality: readSetting("HideSongQuality", true),
 };
+const REQUEST_PATH = extractApiPath(globalThis.$request?.url ?? "");
+const RESPONSE_BYTES = globalThis.$response?.body;
+if (!REQUEST_PATH || !(RESPONSE_BYTES instanceof Uint8Array) || !RESPONSE_BYTES.length ||
+    (!SETTINGS.MineClean && (
+      REQUEST_PATH === "/v1/user/info" ||
+      REQUEST_PATH === "/delivery/batch-deliver" ||
+      REQUEST_PATH === "/creator/musician/reminder/message/get"
+    ))) return $done({});
+
 const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder("utf-8");
-const EAPI_KEY = TEXT_ENCODER.encode("e82ckenh8dichen8");
 
 const AES_SBOX = Uint8Array.from([
   0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe,
@@ -53,21 +63,9 @@ const AES_INV_SBOX = new Uint8Array(256);
 for (let index = 0; index < AES_SBOX.length; index += 1) {
   AES_INV_SBOX[AES_SBOX[index]] = index;
 }
-const AES_RCON = Uint8Array.from([
-  0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36,
-]);
 
 function xtime(value) {
   return ((value << 1) ^ (value & 0x80 ? 0x1b : 0)) & 0xff;
-}
-
-function multiply(value, factor) {
-  let result = 0;
-  for (let current = value, mask = factor; mask; mask >>>= 1) {
-    if (mask & 1) result ^= current;
-    current = xtime(current);
-  }
-  return result;
 }
 
 function packAesWord(a, b, c, d) {
@@ -107,14 +105,17 @@ function ensureAesTables(decrypt) {
   const t3 = new Uint32Array(256);
   for (let value = 0; value < 256; value += 1) {
     const byte = decrypt ? AES_INV_SBOX[value] : AES_SBOX[value];
+    const x2 = xtime(byte);
+    const x4 = xtime(x2);
+    const x8 = xtime(x4);
     const word = decrypt
       ? packAesWord(
-          multiply(byte, 14),
-          multiply(byte, 9),
-          multiply(byte, 13),
-          multiply(byte, 11),
+          x8 ^ x4 ^ x2,
+          x8 ^ byte,
+          x8 ^ x4 ^ byte,
+          x8 ^ x2 ^ byte,
         )
-      : packAesWord(xtime(byte), byte, byte, xtime(byte) ^ byte);
+      : packAesWord(x2, byte, byte, x2 ^ byte);
     t0[value] = word;
     t1[value] = ((word >>> 8) | (word << 24)) >>> 0;
     t2[value] = ((word >>> 16) | (word << 16)) >>> 0;
@@ -133,51 +134,32 @@ function ensureAesTables(decrypt) {
   }
 }
 
-function expandAesKey(key) {
-  if (key.length !== 16) throw new Error("AES-128 key must be 16 bytes");
-  const expanded = new Uint32Array(44);
-  for (let index = 0; index < 4; index += 1) {
-    expanded[index] = readAesWord(key, index * 4);
-  }
-  for (let index = 4; index < expanded.length; index += 1) {
-    let word = expanded[index - 1];
-    if (index % 4 === 0) {
-      word =
-        packAesWord(
-          AES_SBOX[(word >>> 16) & 0xff],
-          AES_SBOX[(word >>> 8) & 0xff],
-          AES_SBOX[word & 0xff],
-          AES_SBOX[word >>> 24],
-        ) ^
-        (AES_RCON[index / 4] << 24);
-    }
-    expanded[index] = expanded[index - 4] ^ word;
-  }
-  return expanded;
-}
-
-function inverseMixAesWord(word) {
-  const a = word >>> 24;
-  const b = (word >>> 16) & 0xff;
-  const c = (word >>> 8) & 0xff;
-  const d = word & 0xff;
-  return packAesWord(
-    multiply(a, 14) ^ multiply(b, 11) ^ multiply(c, 13) ^ multiply(d, 9),
-    multiply(a, 9) ^ multiply(b, 14) ^ multiply(c, 11) ^ multiply(d, 13),
-    multiply(a, 13) ^ multiply(b, 9) ^ multiply(c, 14) ^ multiply(d, 11),
-    multiply(a, 11) ^ multiply(b, 13) ^ multiply(c, 9) ^ multiply(d, 14),
-  );
-}
-
-const AES_ENCRYPT_KEYS = expandAesKey(EAPI_KEY);
-const AES_DECRYPT_KEYS = new Uint32Array(44);
-for (let round = 0; round <= 10; round += 1) {
-  for (let column = 0; column < 4; column += 1) {
-    const word = AES_ENCRYPT_KEYS[(10 - round) * 4 + column];
-    AES_DECRYPT_KEYS[round * 4 + column] =
-      round === 0 || round === 10 ? word : inverseMixAesWord(word);
-  }
-}
+const AES_ENCRYPT_KEYS = new Uint32Array([
+  1698181731, 1801809512, 946104675, 1751477816,
+  698823974, 1120033614, 2057712173, 314792981,
+  99445999, 1194276769, 1032390028, 793401753,
+  3609625338, 2416555355, 2910892247, 2194336078,
+  2872618473, 993073330, 2528225381, 343621931,
+  2595970067, 2710193313, 926674116, 591441391,
+  3006169909, 312788884, 631188304, 115312319,
+  1835699034, 2144226510, 1515284382, 1552867617,
+  4103239184, 2338077406, 3507313984, 2374220897,
+  66558285, 2292949907, 1504116435, 3559211698,
+  182169093, 2188381590, 3688297285, 267629047,
+]);
+const AES_DECRYPT_KEYS = new Uint32Array([
+  182169093, 2188381590, 3688297285, 267629047,
+  2513325876, 3922781390, 247535115, 1250483741,
+  109020413, 2082384890, 3876713157, 1145686038,
+  3931093960, 2053189383, 2601474367, 2740468435,
+  980114470, 2418971855, 3782112824, 945251308,
+  3737896127, 2856700137, 1900077815, 3644397012,
+  3142912049, 1955466326, 3674548766, 2826565411,
+  3431305296, 3487237223, 2945132104, 1937562941,
+  1877135414, 56529975, 1615864367, 3707239285,
+  1202944531, 1824277505, 1661908504, 3165116762,
+  1698181731, 1801809512, 946104675, 1751477816,
+]);
 
 function encryptAesBlock(input, offset, output, outputOffset = offset) {
   let s0 = readAesWord(input, offset) ^ AES_ENCRYPT_KEYS[0];
@@ -276,7 +258,7 @@ function extractApiPath(url) {
   return (
     url.match(
       /^https?:\/\/[^/]+\/x?eapi(\/[a-z0-9_/-]+)(?:\?.*)?$/i,
-    )?.[1] ?? null
+    )?.[1]?.replace(/\/+$/, "") ?? null
   );
 }
 
@@ -289,6 +271,12 @@ const COMMENT_DECORATION_FIELDS = [
   "tagDatas",
   "topicList",
   "bottomTags",
+];
+const COMMENT_USER_FIELDS = [
+  "vipRights", "avatarDetail", "commonIdentity", "relationTag",
+];
+const COMMENT_BADGE_FIELDS = [
+  "userBizLevels", "userNameplates", "pendantData", "medal", "decoration",
 ];
 
 function cleanCommentTree(value) {
@@ -303,12 +291,7 @@ function cleanCommentTree(value) {
       value.user.followed = true;
       changes += 1;
     }
-    for (const field of [
-      "vipRights",
-      "avatarDetail",
-      "commonIdentity",
-      "relationTag",
-    ]) {
+    for (const field of COMMENT_USER_FIELDS) {
       if (field in value.user && value.user[field] !== null) {
         value.user[field] = null;
         changes += 1;
@@ -319,13 +302,7 @@ function cleanCommentTree(value) {
       changes += 1;
     }
   }
-  for (const field of [
-    "userBizLevels",
-    "userNameplates",
-    "pendantData",
-    "medal",
-    "decoration",
-  ]) {
+  for (const field of COMMENT_BADGE_FIELDS) {
     if (field in value && value[field] !== null) {
       value[field] = null;
       changes += 1;
@@ -337,7 +314,11 @@ function cleanCommentTree(value) {
       changes += 1;
     }
   }
-  for (const child of Object.values(value)) changes += cleanCommentTree(child);
+  for (const key in value) {
+    const child = value[key];
+    if (child && typeof child === "object" && Object.prototype.hasOwnProperty.call(value, key))
+      changes += cleanCommentTree(child);
+  }
   return changes;
 }
 
@@ -491,11 +472,13 @@ function cleanSongQuality(privilege) {
       changed = true;
     }
   }
-  for (const key of ["maxbr", ...(privilege.maxbr === 0 ? ["playMaxLevel"] : [])]) {
-    if (typeof privilege[key] === "number" && privilege[key] > 320000) {
-      privilege[key] = 320000;
-      changed = true;
-    }
+  if (typeof privilege.maxbr === "number" && privilege.maxbr > 320000) {
+    privilege.maxbr = 320000;
+    changed = true;
+  } else if (privilege.maxbr === 0 &&
+             typeof privilege.playMaxLevel === "number" && privilege.playMaxLevel > 320000) {
+    privilege.playMaxLevel = 320000;
+    changed = true;
   }
   if (privilege.maxBrLevel === "hires") {
     privilege.maxBrLevel = "exhigh";
@@ -503,6 +486,11 @@ function cleanSongQuality(privilege) {
   }
   return changed;
 }
+
+const HIDDEN_SEARCH_TAGS = new Set([
+  "VIP", "VIP_DOWNLOAD", "Dolby", "HiRes", "SQ",
+  "Whale_Cloud_Mica_Belt", "Whale_Cloud_Attain_Sound", "WHALE_CLOUD_AROUND",
+]);
 
 function cleanSearchResults(payload) {
   if (!Array.isArray(payload.data?.blocks)) return false;
@@ -530,8 +518,11 @@ function cleanSearchResults(payload) {
           changed = true;
         }
         const metadata = resource.baseInfo?.metaData;
-        if (!Array.isArray(metadata)) continue;
-        const filtered = metadata.filter((tag) => tag !== "VIP" && tag !== "VIP_DOWNLOAD");
+        if (!Array.isArray(metadata) || !metadata.length) {
+          changed = cleanSongCollection([resource.baseInfo?.simpleSongData]) || changed;
+          continue;
+        }
+        const filtered = metadata.filter((tag) => !HIDDEN_SEARCH_TAGS.has(tag));
         if (filtered.length !== metadata.length) {
           resource.baseInfo.metaData = filtered.length ? filtered : [""];
           changed = true;
@@ -558,10 +549,27 @@ function clearEntitledPrivilegeFee(privilege) {
   return true;
 }
 
-function cleanSongListVipBadges(songs, clearReasons = false) {
-  if (!Array.isArray(songs)) return false;
+function cleanSongPrivileges(privileges, hideQuality = false, entitledIds) {
+  if (!Array.isArray(privileges)) return false;
   let changed = false;
+  for (const privilege of privileges) {
+    if (entitledIds && privilege?.payed === 1 && privilege.id != null)
+      entitledIds.add(String(privilege.id));
+    changed = clearEntitledPrivilegeFee(privilege) || changed;
+    if (hideQuality) changed = cleanSongQuality(privilege) || changed;
+  }
+  return changed;
+}
+
+function cleanSongCollection(songs, privileges, hideQuality = false, clearReasons = false) {
+  const entitledIds = Array.isArray(songs) && songs.length &&
+    Array.isArray(privileges) && privileges.length ? new Set() : null;
+  let changed = cleanSongPrivileges(privileges, hideQuality, entitledIds);
+  if (!Array.isArray(songs)) return changed;
   for (const song of songs) {
+    if (!song || typeof song !== "object") continue;
+    changed = clearEntitledPrivilegeFee(song.privilege) || changed;
+    if (hideQuality) changed = cleanSongQuality(song.privilege) || changed;
     if (clearReasons) {
       if (song?.reason != null) {
         song.reason = null;
@@ -572,8 +580,7 @@ function cleanSongListVipBadges(songs, clearReasons = false) {
         changed = true;
       }
     }
-    if (song?.privilege?.payed !== 1) continue;
-    changed = clearEntitledPrivilegeFee(song.privilege) || changed;
+    if (song.privilege?.payed !== 1 && !entitledIds?.has(String(song.id))) continue;
     if (song.fee !== 0) {
       song.fee = 0;
       changed = true;
@@ -585,9 +592,7 @@ function cleanSongListVipBadges(songs, clearReasons = false) {
 function cleanDailyRecommendation(payload) {
   const data = payload.data;
   if (!data) return false;
-  let changed = cleanSongListVipBadges(data.dailySongs, true);
-  for (const song of Array.isArray(data.dailySongs) ? data.dailySongs : [])
-    changed = cleanSongQuality(song?.privilege) || changed;
+  let changed = cleanSongCollection(data.dailySongs, undefined, true, true);
   if (Array.isArray(data.recommendReasons) && data.recommendReasons.length) {
     data.recommendReasons = [];
     changed = true;
@@ -596,29 +601,23 @@ function cleanDailyRecommendation(payload) {
 }
 
 function cleanSongDetail(payload) {
-  if (!Array.isArray(payload.songs) || !Array.isArray(payload.privileges))
-    return false;
-  const entitledIds = new Set();
-  let changed = false;
-  for (const privilege of payload.privileges) {
-    if (privilege?.payed !== 1 || privilege.id == null) continue;
-    entitledIds.add(privilege.id);
-    changed = clearEntitledPrivilegeFee(privilege) || changed;
-  }
-  for (const song of payload.songs) {
-    if (entitledIds.has(song?.id) && song.fee !== 0) {
-      song.fee = 0;
-      changed = true;
-    }
-  }
-  return changed;
+  return cleanSongCollection(payload.songs, payload.privileges);
 }
 
 function cleanPrivilegeVipBadges(payload) {
-  if (!Array.isArray(payload.data)) return false;
-  let changed = false;
-  for (const privilege of payload.data)
-    changed = clearEntitledPrivilegeFee(privilege) || changed;
+  return cleanSongPrivileges(payload.data);
+}
+
+function cleanPlaylistDetail(payload) {
+  let changed = cleanSongCollection(
+    payload.playlist?.tracks, payload.privileges, SETTINGS.HideSongQuality,
+  );
+  for (const track of Array.isArray(payload.playlist?.trackIds) ? payload.playlist.trackIds : []) {
+    if (track && Object.prototype.hasOwnProperty.call(track, "dpr")) {
+      delete track.dpr;
+      changed = true;
+    }
+  }
   return changed;
 }
 
@@ -689,7 +688,24 @@ function cleanCommentList(data) {
   return cleanCommentTree(data) > 0 || changed;
 }
 
+const SONG_HANDLERS = {
+  "/v3/song/detail": cleanSongDetail,
+  "/v6/playlist/detail": cleanPlaylistDetail,
+  "/chart/playlist/detail": cleanPlaylistDetail,
+  "/playlist/privilege": (payload) => cleanSongPrivileges(payload.data, true),
+  "/song/mix/detail": (payload) =>
+    cleanSongCollection(payload.songs, payload.privileges, true),
+  "/song/or/podcast/detail": (payload) =>
+    cleanSongCollection(payload.data?.songs, payload.data?.privileges, true),
+  "/song/enhance/privilege": cleanPrivilegeVipBadges,
+  "/song/enhance/player/url/v1": cleanPrivilegeVipBadges,
+  "/v3/discovery/recommend/songs": cleanDailyRecommendation,
+  "/v1/artist/top/song": (payload) => cleanSongCollection(payload.songs, undefined, true),
+  "/search/complex/page/v3": cleanSearchResults,
+};
+
 const HANDLERS = {
+  ...SONG_HANDLERS,
   "/playlist/detail/rcmd/get": (payload) => {
     const data = payload.data;
     if (!Array.isArray(data?.recPlaylist)) return false;
@@ -719,6 +735,11 @@ const HANDLERS = {
   },
   "/batch": (payload) => {
     let changed = false;
+    for (const [path, value] of Object.entries(payload)) {
+      if (!path.startsWith("/api/") || !value || typeof value !== "object") continue;
+      const handler = SONG_HANDLERS[path.slice(4).replace(/\/+$/, "")];
+      if (handler) changed = handler(value) || changed;
+    }
     changed =
       replaceData(payload, "/api/social/event/bff/ad/resources", {}) || changed;
     changed =
@@ -829,18 +850,6 @@ const HANDLERS = {
   "/link/scene/show/resource/scene-code/player": cleanPlayerHints,
   "/rtrs/abt/front/expinfo/list": cleanClientExperiments,
   "/rtrs/abt/web/expinfo/list": cleanWebExperiments,
-  "/v3/song/detail": cleanSongDetail,
-  "/playlist/privilege": (payload) => {
-    if (!Array.isArray(payload.data)) return false;
-    let changed = false;
-    for (const privilege of payload.data)
-      changed = cleanSongQuality(privilege) || changed;
-    return changed;
-  },
-  "/song/enhance/privilege": cleanPrivilegeVipBadges,
-  "/song/enhance/player/url/v1": cleanPrivilegeVipBadges,
-  "/v3/discovery/recommend/songs": cleanDailyRecommendation,
-  "/v1/artist/top/song": (payload) => cleanSongListVipBadges(payload.songs),
   "/user/sub/artist/exist": cleanPlayerArtistFollow,
   "/link/home/framework/tab": (payload) => {
     const frameworkChanged = cleanHomeFramework(payload);
@@ -849,7 +858,6 @@ const HANDLERS = {
   },
   "/link/home/framework/top/tab": cleanTopTabs,
   "/search/default/keyword/list": cleanSearchDefaultKeyword,
-  "/search/complex/page/v3": cleanSearchResults,
   "/search/rcmd/keyword/get/v2": cleanSearchRecommendations,
   "/homepage/block/page": cleanHomepageBanners,
 };
@@ -1062,16 +1070,9 @@ function cleanHomepageBanners(payload) {
 
 function run() {
   try {
-    const path = extractApiPath(globalThis.$request?.url ?? "");
-    if (!SETTINGS.MineClean && [
-      "/v1/user/info",
-      "/delivery/batch-deliver",
-      "/creator/musician/reminder/message/get",
-    ].includes(path)) return $done({});
-    const handler = path ? HANDLERS[path] : null;
-    const bytes = globalThis.$response?.body;
-    if (!handler || !(bytes instanceof Uint8Array) || !bytes.length)
-      return $done({});
+    const handler = HANDLERS[REQUEST_PATH];
+    const bytes = RESPONSE_BYTES;
+    if (!handler) return $done({});
     const payload = decodeResponseBody(bytes);
     if (!handler(payload)) return $done({});
     return $done({ body: encodeResponseBody(payload) });
@@ -1082,3 +1083,4 @@ function run() {
 }
 
 run();
+})();

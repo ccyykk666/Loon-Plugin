@@ -454,7 +454,6 @@ function cleanClientExperiments(payload) {
     const config = experiment.clientConfig;
     if (typeof config?.QualityLogo !== "string" || config.QualityLogo === "")
       continue;
-    // Experimental: an empty style may hide the logo or fall back to default.
     config.QualityLogo = "";
     changed = true;
   }
@@ -583,6 +582,29 @@ function cleanCommentList(data) {
 }
 
 const HANDLERS = {
+  "/playlist/detail/rcmd/get": (payload) => {
+    const data = payload.data;
+    if (!Array.isArray(data?.recPlaylist)) return false;
+    if (!data.recPlaylist.length && !data.rcmdTitle && !data.jumpUrl) return false;
+    data.recPlaylist = [];
+    data.rcmdTitle = "";
+    data.jumpUrl = "";
+    return true;
+  },
+  "/homepage/scene/more/rcmd/song": (payload) => {
+    const data = payload.data;
+    if (!Array.isArray(data?.songList) || !data.songList.length) return false;
+    if (!data.songList.every(
+      (song) => data.sourceMap?.[song?.id] === "curlist_scene_more_rcmd",
+    )) return false;
+    // Match the server's empty recommendation response for this scene.
+    data.songList = null;
+    data.algMap = null;
+    data.sourceMap = null;
+    data.offset = 0;
+    data.hasMore = false;
+    return true;
+  },
   "/comments/activity/airborne/enable/voice": (payload) => {
     if (payload.data?.voiceCommentEnabled !== true) return false;
     payload.data.voiceCommentEnabled = false;

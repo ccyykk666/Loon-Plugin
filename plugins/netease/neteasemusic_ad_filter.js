@@ -452,6 +452,105 @@ function cleanClientExperiments(payload) {
   return changed;
 }
 
+function cleanWebExperiments(payload) {
+  if (!Array.isArray(payload.data)) return false;
+  let changed = false;
+  let hasSearchConfig = false;
+  let hasSearchLabel = false;
+  for (const experiment of payload.data) {
+    if (["SearchUI2", "SearchUI3", "SearchSongRec"].includes(experiment?.expName))
+      hasSearchConfig = true;
+    if (experiment?.expName === "SearchLabel") {
+      hasSearchLabel = true;
+      if (!experiment.expGroupName || experiment.expGroupName === "c") {
+        experiment.expGroupName = "t1";
+        changed = true;
+      }
+    }
+    if (experiment?.expName === "Hp_Playlist_Suggest" &&
+        experiment.expGroupName === "t1") {
+      experiment.expGroupName = "c";
+      changed = true;
+    }
+  }
+  if (hasSearchConfig && !hasSearchLabel) {
+    payload.data.push({ expName: "SearchLabel", expGroupName: "t1" });
+    changed = true;
+  }
+  return changed;
+}
+
+function cleanSongQuality(privilege) {
+  if (!privilege || typeof privilege !== "object") return false;
+  let changed = false;
+  if (Number.isSafeInteger(privilege.flag) && privilege.flag >= 0) {
+    const qualityBits = (Math.floor(privilege.flag / 65536) % 8) * 65536;
+    if (qualityBits) {
+      privilege.flag -= qualityBits;
+      changed = true;
+    }
+  }
+  for (const key of ["maxbr", ...(privilege.maxbr === 0 ? ["playMaxLevel"] : [])]) {
+    if (typeof privilege[key] === "number" && privilege[key] > 320000) {
+      privilege[key] = 320000;
+      changed = true;
+    }
+  }
+  if (privilege.maxBrLevel === "hires") {
+    privilege.maxBrLevel = "exhigh";
+    changed = true;
+  }
+  return changed;
+}
+
+function cleanSearchResults(payload) {
+  if (!Array.isArray(payload.data?.blocks)) return false;
+  let changed = false;
+  const blocks = [];
+  for (const block of payload.data.blocks) {
+    if (block?.blockCode === "search_block_note") {
+      changed = true;
+      continue;
+    }
+    if (Array.isArray(block?.resources)) {
+      if (block.blockCode === "search_block_best_match") {
+        const resources = block.resources.filter((item) => item?.resourceType !== "note");
+        if (resources.length !== block.resources.length) {
+          block.resources = resources;
+          changed = true;
+          if (!resources.length) continue;
+        }
+      }
+      for (const resource of block.resources) {
+        if (resource?.resourceType !== "song") continue;
+        if (Array.isArray(resource.extInfo?.algClickableTags) &&
+            resource.extInfo.algClickableTags.length) {
+          resource.extInfo.algClickableTags = [];
+          changed = true;
+        }
+        const metadata = resource.baseInfo?.metaData;
+        if (!Array.isArray(metadata)) continue;
+        const filtered = metadata.filter((tag) => tag !== "VIP" && tag !== "VIP_DOWNLOAD");
+        if (filtered.length !== metadata.length) {
+          resource.baseInfo.metaData = filtered.length ? filtered : [""];
+          changed = true;
+        }
+      }
+    }
+    blocks.push(block);
+  }
+  if (changed) payload.data.blocks = blocks;
+  return changed;
+}
+
+function cleanSearchRecommendations(payload) {
+  const data = payload.data;
+  if (!Array.isArray(data?.algWords)) return false;
+  let changed = replaceValue(data, "algWords", [{}]);
+  changed = replaceValue(data, "operateWords", {}) || changed;
+  return changed;
+}
+
 function clearEntitledPrivilegeFee(privilege) {
   if (privilege?.payed !== 1 || privilege.fee === 0) return false;
   privilege.fee = 0;
@@ -486,6 +585,8 @@ function cleanDailyRecommendation(payload) {
   const data = payload.data;
   if (!data) return false;
   let changed = cleanSongListVipBadges(data.dailySongs, true);
+  for (const song of Array.isArray(data.dailySongs) ? data.dailySongs : [])
+    changed = cleanSongQuality(song?.privilege) || changed;
   if (Array.isArray(data.recommendReasons) && data.recommendReasons.length) {
     data.recommendReasons = [];
     changed = true;
@@ -548,10 +649,25 @@ const TOP_TAB_SETTING_BY_TITLE = {
   AI写歌: "TopAI",
 };
 
+function matchesValue(value, expected) {
+  if (value === expected) return true;
+  if (!value || !expected || typeof value !== "object" ||
+      typeof expected !== "object" ||
+      Array.isArray(value) !== Array.isArray(expected)) return false;
+  const keys = Object.keys(expected);
+  return Object.keys(value).length === keys.length &&
+    keys.every((key) => matchesValue(value[key], expected[key]));
+}
+
+function replaceValue(target, key, value) {
+  if (matchesValue(target[key], value)) return false;
+  target[key] = value;
+  return true;
+}
+
 function replaceData(payload, path, data) {
   if (payload[path]?.data === undefined) return false;
-  payload[path].data = data;
-  return true;
+  return replaceValue(payload[path], "data", data);
 }
 
 function cleanCommentList(data) {
@@ -637,15 +753,7 @@ const HANDLERS = {
         changed = cleanCommentMomentRecommendation(payload[path]) || changed;
         continue;
       }
-      payload[path].data = {
-        count: 0,
-        offset: 0,
-        records: [],
-        delayRender: false,
-      };
-      if (Array.isArray(payload[path].trp?.rules))
-        payload[path].trp.rules = [];
-      changed = true;
+      changed = cleanInsertedResources(payload[path], 0) || changed;
     }
     return changed;
   },
@@ -656,28 +764,26 @@ const HANDLERS = {
   "/resource/comments/reply/preload": (payload) =>
     cleanCommentTree(payload.data?.preloadCommentMap ?? payload.data) > 0,
   "/moment/tab/info/get": (payload) => {
-    payload.data = { tabStatus: 0, momentNum: 0 };
-    return true;
+    return replaceValue(payload, "data", { tabStatus: 0, momentNum: 0 });
   },
   "/comment/feed/inserted/resources/combined": cleanInsertedResources,
   "/comment/feed/inserted/resources": cleanInsertedResources,
   "/comment/feed/inserted/resources/isolation": cleanCommentMomentRecommendation,
   "/moment/pub/entrance/get": (payload) => {
-    payload.data = {
+    return replaceValue(payload, "data", {
       icon: "",
       targetUrl: "",
       guideUrl: "",
       supportVideo: false,
       commentShowEntrance: false,
-    };
-    return true;
+    });
   },
   "/moment/song/feed/get": (payload) => {
-    payload.event = [];
-    payload.more = false;
-    payload.size = 0;
-    payload.cursor = 0;
-    return true;
+    let changed = replaceValue(payload, "event", []);
+    changed = replaceValue(payload, "more", false) || changed;
+    changed = replaceValue(payload, "size", 0) || changed;
+    changed = replaceValue(payload, "cursor", 0) || changed;
+    return changed;
   },
   "/v1/user/info": (payload) => {
     if (!SETTINGS.MineClean) return false;
@@ -700,13 +806,11 @@ const HANDLERS = {
   },
   "/sp/flow/popup/query": (payload) => {
     if (!payload.data) return false;
-    payload.data = {};
-    return true;
+    return replaceValue(payload, "data", {});
   },
   "/vipactivity/app/cashier/setting/get": (payload) => {
     if (!payload.data?.cashierTabPopup) return false;
-    payload.data.cashierTabPopup = {};
-    return true;
+    return replaceValue(payload.data, "cashierTabPopup", {});
   },
   "/link/position/show/resource": cleanSidebarResources,
   "/delivery/batch-deliver": (payload) => {
@@ -723,6 +827,7 @@ const HANDLERS = {
   "/link/scene/show/resource": cleanPlayerHints,
   "/link/scene/show/resource/scene-code/player": cleanPlayerHints,
   "/rtrs/abt/front/expinfo/list": cleanClientExperiments,
+  "/rtrs/abt/web/expinfo/list": cleanWebExperiments,
   "/v3/song/detail": cleanSongDetail,
   "/song/enhance/privilege": cleanPrivilegeVipBadges,
   "/song/enhance/player/url/v1": cleanPrivilegeVipBadges,
@@ -736,14 +841,20 @@ const HANDLERS = {
   },
   "/link/home/framework/top/tab": cleanTopTabs,
   "/search/default/keyword/list": cleanSearchDefaultKeyword,
+  "/search/complex/page/v3": cleanSearchResults,
+  "/search/rcmd/keyword/get/v2": cleanSearchRecommendations,
   "/homepage/block/page": cleanHomepageBanners,
 };
 
-function cleanInsertedResources(payload) {
-  const offset = Number(payload.data?.offset) || 0;
-  payload.data = { count: 0, offset, records: [], delayRender: false };
-  if (Array.isArray(payload.trp?.rules)) payload.trp.rules = [];
-  return true;
+function cleanInsertedResources(payload, offset = Number(payload.data?.offset) || 0) {
+  let changed = replaceValue(payload, "data", {
+    count: 0, offset, records: [], delayRender: false,
+  });
+  if (Array.isArray(payload.trp?.rules) && payload.trp.rules.length) {
+    payload.trp.rules = [];
+    changed = true;
+  }
+  return changed;
 }
 
 function cleanCommentMomentRecommendation(payload) {
@@ -944,6 +1055,11 @@ function cleanHomepageBanners(payload) {
 function run() {
   try {
     const path = extractApiPath(globalThis.$request?.url ?? "");
+    if (!SETTINGS.MineClean && [
+      "/v1/user/info",
+      "/delivery/batch-deliver",
+      "/creator/musician/reminder/message/get",
+    ].includes(path)) return $done({});
     const handler = path ? HANDLERS[path] : null;
     const bytes = globalThis.$response?.body;
     if (!handler || !(bytes instanceof Uint8Array) || !bytes.length)

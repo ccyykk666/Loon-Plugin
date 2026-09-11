@@ -439,14 +439,26 @@ function cleanPlayerHints(payload) {
   return true;
 }
 
-function cleanLyricsCommentExperiment(payload) {
+function cleanClientExperiments(payload) {
   if (!Array.isArray(payload.data)) return false;
+  let changed = false;
   const index = payload.data.findIndex(
     (experiment) => experiment?.expName === "lyrics_addcomment",
   );
-  if (index < 0) return false;
-  payload.data.splice(index, 1);
-  return true;
+  if (index >= 0) {
+    payload.data.splice(index, 1);
+    changed = true;
+  }
+  for (const experiment of payload.data) {
+    if (experiment?.expName !== "hy_song_VipLogo") continue;
+    const config = experiment.clientConfig;
+    if (typeof config?.QualityLogo !== "string" || config.QualityLogo === "")
+      continue;
+    // Experimental: an empty style may hide the logo or fall back to default.
+    config.QualityLogo = "";
+    changed = true;
+  }
+  return changed;
 }
 
 function clearEntitledPrivilegeFee(privilege) {
@@ -698,7 +710,7 @@ const HANDLERS = {
   },
   "/link/scene/show/resource": cleanPlayerHints,
   "/link/scene/show/resource/scene-code/player": cleanPlayerHints,
-  "/rtrs/abt/front/expinfo/list": cleanLyricsCommentExperiment,
+  "/rtrs/abt/front/expinfo/list": cleanClientExperiments,
   "/v3/song/detail": cleanSongDetail,
   "/song/enhance/privilege": cleanPrivilegeVipBadges,
   "/song/enhance/player/url/v1": cleanPrivilegeVipBadges,

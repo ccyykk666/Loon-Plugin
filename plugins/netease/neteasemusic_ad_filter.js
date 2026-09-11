@@ -552,6 +552,11 @@ function replaceData(payload, path, data) {
 }
 
 const HANDLERS = {
+  "/comments/activity/airborne/enable/voice": (payload) => {
+    if (payload.data?.voiceCommentEnabled !== true) return false;
+    payload.data.voiceCommentEnabled = false;
+    return true;
+  },
   "/batch": (payload) => {
     let changed = false;
     changed =

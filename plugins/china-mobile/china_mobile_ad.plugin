@@ -13,7 +13,7 @@ HideTopPhone = switch,false,tag=[顶部] 隐藏手机
 HideTopNearby = switch,false,tag=[顶部] 隐藏附近厅
 HideTopAI = switch,false,tag=[顶部] 隐藏 AI
 HideTopEnterprise = switch,false,tag=[顶部] 隐藏政企
-MineClean = switch,true,tag=[我的]基础净化
+MineClean = switch,true,tag=[我的] 基础净化
 
 [Rewrite]
 request if ${url} ~= /^https:\/\/client\.app\.coc\.10086\.cn\/biz-orange\/(?:DN\/(?:dropsAdverService\/getDropsAdverNew|homepagePopup\/getSortInfo|toast\/getToastRule)|DH\/toast\/august\/getToast|DA\/liveSuspension\/getPageCode)(?:\?.*)?$/ then reject_dict(200)

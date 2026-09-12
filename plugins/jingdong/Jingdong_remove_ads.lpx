@@ -4,13 +4,13 @@
 #!system=iOS, iPadOS
 #!loon_version=3.5.1(983)
 #!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/jingdong/icon.png
-#!date=2026-09-11
+#!date=2026-09-12
 
 [Argument]
-HomeClean=switch, true, tag=1. 首页净化
-OrderAds=switch, true, tag=2. 订单与物流
-ProfileClean=switch, true, tag=3. 我的与设置
-ProductClean=switch, true, tag=4. 商品页净化
+HomeClean=switch, true, tag=首页净化
+OrderAds=switch, true, tag=订单物流
+ProfileClean=switch, true, tag=我的页净化
+ProductClean=switch, true, tag=商品页净化
 
 [Rule]
 AND, ((DOMAIN, api.m.jd.com), (PROTOCOL, TCP)), REJECT-NO-DROP

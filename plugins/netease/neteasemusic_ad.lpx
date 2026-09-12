@@ -7,7 +7,7 @@
 #!date=2026-09-12
 
 [Argument]
-LegacyHomeFramework = switch,true,tag=[首页框架] 旧版首页
+LegacyHomeFramework = switch,true,tag=[首页] 旧版首页
 TopRcmd = switch,true,tag=[顶栏] 推荐
 TopMusic = switch,true,tag=[顶栏] 音乐
 TopPodcast = switch,true,tag=[顶栏] 播客

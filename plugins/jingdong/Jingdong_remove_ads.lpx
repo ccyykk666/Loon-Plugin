@@ -8,7 +8,7 @@
 
 [Argument]
 HomeClean=switch, true, tag=首页净化
-OrderAds=switch, true, tag=订单物流
+OrderAds=switch, true, tag=订单页净化
 ProfileClean=switch, true, tag=我的页净化
 ProductClean=switch, true, tag=商品页净化
 

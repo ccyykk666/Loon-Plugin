@@ -522,8 +522,17 @@ const SONG_HANDLERS = {
   "/search/complex/page/v3": cleanSearchResults,
 };
 
+function cleanArtistPromotions(payload) {
+  const data = payload.data;
+  if (!Array.isArray(data?.resources)) return false;
+  const changed = replaceValue(data, "resources", []);
+  return replaceValue(data, "valid", false) || changed;
+}
+
 const HANDLERS = {
   ...SONG_HANDLERS,
+  "/community/artist/detail/dynamic": cleanArtistPromotions,
+  "/artist/detail/dynamic/v2": cleanArtistPromotions,
   "/playlist/detail/rcmd/get": (payload) => {
     const data = payload.data;
     if (!Array.isArray(data?.recPlaylist)) return false;

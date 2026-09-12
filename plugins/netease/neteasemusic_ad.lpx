@@ -4,7 +4,7 @@
 #!system=ios
 #!loon_version=3.5.1(988)
 #!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/netease/icon.jpg
-#!date=2026-09-11
+#!date=2026-09-12
 
 [Argument]
 LegacyHomeFramework = switch,true,tag=[首页框架] 旧版首页

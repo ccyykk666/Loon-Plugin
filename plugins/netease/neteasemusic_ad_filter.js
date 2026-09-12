@@ -194,6 +194,7 @@ const PLAYER_PROMO_POSITIONS = new Set([
   "fast_player_middle_left_toast",
   "player_global_bubble",
   "vinyl_comment_entrance",
+  "playlist_detail_top_banner",
 ]);
 
 function cleanPlayerHints(payload) {

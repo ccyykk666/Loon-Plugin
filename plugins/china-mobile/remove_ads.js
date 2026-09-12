@@ -371,6 +371,7 @@
     var changed = false;
 
     var removedAreas = {
+      "20250923002": true,
       "20260529002": true,
       "20260508002": true,
       "20241010002": true,

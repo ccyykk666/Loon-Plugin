@@ -4,11 +4,11 @@
 #!system=iOS, iPadOS
 #!loon_version=3.5.1(978)
 #!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/bilibili-international/icon.jpg
-#!date=2026-08-25
+#!date=2026-09-12
 
 [Argument]
-FollowingTab=switch, true, tag=1. 关注
-MessageTab=switch, true, tag=2. 消息
+FollowingTab=switch, true, tag=[底栏] 关注
+MessageTab=switch, true, tag=[底栏] 消息
 
 [Rewrite]
 # 启动广告接口：返回抓包中已验证的空响应结构

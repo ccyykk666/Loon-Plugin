@@ -9,7 +9,6 @@
 # 开屏广告
 response if ${url} ~= /^https:\/\/appdmkj\.5idream\.net\/appPic\/homepage(?:\?.*)?$/ && ${response.status} == 200 then response.json.jq(".data={}")
 
-# 我的页面广告（含淘宝闪购）
 response if ${url} ~= /^https:\/\/appdmkj\.5idream\.net\/v3\/user\/(?:advertising|ad)\/list(?:\?.*)?$/ && ${response.status} == 200 then response.json.jq(".data=[]")
 
 # 本校首页轮播

@@ -500,6 +500,7 @@
     var body = payload && payload.rspBody;
     if (!body || !Array.isArray(body.areaList)) return false;
     var removedAreas = {
+      "20260610006": true,
       "20230721008": true,
       "20230721012": true,
       "20251024002": true,

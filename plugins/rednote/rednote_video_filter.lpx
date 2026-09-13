@@ -1,5 +1,5 @@
-#!name=rednote首页视频过滤
-#!desc=隐藏rednote首页推荐中的视频卡片，保留图文和其他卡片。
+#!name=rednote视频过滤
+#!desc=移除rednote推荐视频
 #!author=ccyykk666[https://github.com/ccyykk666]
 #!system=iOS, iPadOS
 #!loon_version=3.5.1(978)

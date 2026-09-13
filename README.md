@@ -17,3 +17,4 @@
 | 云闪付 | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/unionpay/UnionPayCloudPay.lpx) |
 | 微博轻享版 | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/weibo/weibo_ad.lpx) |
 | YouTube | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/youtube/youtube_ad.lpx) |
+| rednote 首页视频过滤 | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/rednote/rednote_video_filter.lpx) |

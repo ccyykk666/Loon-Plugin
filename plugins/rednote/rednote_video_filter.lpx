@@ -1,0 +1,16 @@
+#!name=rednote首页视频过滤
+#!desc=隐藏rednote首页推荐中的视频卡片，保留图文和其他卡片。
+#!author=ccyykk666[https://github.com/ccyykk666]
+#!system=iOS, iPadOS
+#!loon_version=3.5.1(978)
+#!date=2026-09-13
+#!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/rednote/icon.jpg
+
+[Argument]
+HideHomeVideos = switch,true,tag=[首页] 隐藏视频
+
+[Rewrite]
+response if ${HideHomeVideos} == true && ${url} ~= /^https:\/\/rec\.rnote\.com\/api\/sns\/v6\/homefeed(?:\?|$)/i && ${response.status} == 200 then response.json.jq("if type != \"object\" then . elif (.data | type) != \"array\" then . else .data |= map(if type == \"object\" then select(.type != \"video\") else . end) end")
+
+[Mitm]
+hostname = rec.rnote.com

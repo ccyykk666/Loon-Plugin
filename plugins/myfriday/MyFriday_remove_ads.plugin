@@ -1,0 +1,19 @@
+#!name=超级课程表去广告
+#!desc=移除超级课程表广告
+#!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/myfriday/icon.jpg
+#!author=ccyykk666[https://github.com/ccyykk666], 可莉V[https://github.com/luestr]
+#!category=去广告
+#!system=iOS, iPadOS
+#!loon_version=3.5.1(978)
+#!date=2026-08-29
+
+[Rule]
+DOMAIN, ad.myfriday.cn, REJECT
+IP-CIDR, 182.92.244.70/32, REJECT, no-resolve
+
+[Rewrite]
+response if ${url} ~= /^http:\/\/120\.55\.151\.61(?::80)?\/Base\/Apps\/getPageConfig\.action(?:\?|$)/i then response.json.jq(`.data.pageConfig=((.data.pageConfig//[])|map(select(((.targetUrl//"")|contains("/activities/union-member/"))|not)))`)
+
+response if ${url} ~= /^http:\/\/120\.55\.151\.61(?::80)?\/Base\/V1\/Student\/getFrontPageToolBar\.action(?:\?|$)/i then response.json.jq(`.data.discoveryInfo.moduleBOs=((.data.discoveryInfo.moduleBOs//[])|map(select(((.moduleId//0)|tostring|test("^(249|250|251|258|259|260|262)$"))|not)))`)
+
+response if ${url} ~= /^http:\/\/120\.55\.151\.61(?::80)?\/Treehole\/V4\/Message\/getCampusNewsV4\.action(?:\?|$)/i then response.json.jq(`.data.discoveryInfoBO.moduleBOs=((.data.discoveryInfoBO.moduleBOs//[])|map(select(((.moduleId//0)|tostring|test("^(249|250|251|258|259|260|262)$"))|not)))`)

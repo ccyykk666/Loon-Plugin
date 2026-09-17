@@ -23,7 +23,6 @@ const SETTINGS = {
   TopLive: readSetting("TopLive", false),
   TopAI: readSetting("TopAI", false),
   MineClean: readSetting("MineClean", true),
-  HideSongQuality: readSetting("HideSongQuality", true),
 };
 const REQUEST_PATH = extractApiPath(globalThis.$request?.url ?? "");
 const RESPONSE_BYTES = globalThis.$response?.body;
@@ -44,21 +43,13 @@ function extractApiPath(url) {
   );
 }
 
-const COMMENT_DECORATION_FIELDS = [
-  "tag",
-  "tags",
-  "commentTag",
-  "commentTags",
-  "contentTags",
-  "tagDatas",
-  "topicList",
-  "bottomTags",
-];
+const COMMENT_FIELD_ACTIONS = {
+  tag: 1, tags: 1, commentTag: 1, commentTags: 1,
+  contentTags: 1, tagDatas: 1, topicList: 1, bottomTags: 1,
+  userBizLevels: 2, userNameplates: 2, pendantData: 2, medal: 2, decoration: 2,
+};
 const COMMENT_USER_FIELDS = [
   "vipRights", "avatarDetail", "commonIdentity", "relationTag",
-];
-const COMMENT_BADGE_FIELDS = [
-  "userBizLevels", "userNameplates", "pendantData", "medal", "decoration",
 ];
 
 function cleanCommentTree(value) {
@@ -84,22 +75,20 @@ function cleanCommentTree(value) {
       changes += 1;
     }
   }
-  for (const field of COMMENT_BADGE_FIELDS) {
-    if (field in value && value[field] !== null) {
-      value[field] = null;
-      changes += 1;
-    }
-  }
-  for (const field of COMMENT_DECORATION_FIELDS) {
-    if (field in value) {
-      delete value[field];
-      changes += 1;
-    }
-  }
   for (const key in value) {
     const child = value[key];
-    if (child && typeof child === "object" && Object.prototype.hasOwnProperty.call(value, key))
+    const action = COMMENT_FIELD_ACTIONS[key];
+    if (action === 1) {
+      delete value[key];
+      changes += 1;
+    } else if (action === 2) {
+      if (child !== null) {
+        value[key] = null;
+        changes += 1;
+      }
+    } else if (child && typeof child === "object" && Object.prototype.hasOwnProperty.call(value, key)) {
       changes += cleanCommentTree(child);
+    }
   }
   return changes;
 }
@@ -166,37 +155,37 @@ const PLAYER_PROMO_POSITIONS = new Set([
 
 function cleanPlayerHints(payload) {
   if (!Array.isArray(payload.data?.hints)) return false;
-  const removedTokens = new Set();
+  const removedTokens = Array.isArray(payload.trp?.rules) && payload.trp.rules.length
+    ? new Set() : null;
   const filtered = payload.data.hints.filter((hint) => {
     const viewType = hint?.template?.extra?.viewType;
+    const extra = hint?.data?.extra;
     const position =
-      hint?.position?.code ?? hint?.data?.extra?.positionCode ?? "";
+      hint?.position?.code ?? extra?.positionCode ?? "";
+    const remove = PLAYER_VIEW_TYPES.has(viewType) || PLAYER_PROMO_POSITIONS.has(position);
+    if (remove && !removedTokens) return false;
     const identifiers = [
-      hint?.code,
-      hint?.data?.extra?.code,
-      hint?.data?.extra?.channelCode,
-      hint?.data?.extra?.trp_id,
-    ]
-      .filter(Boolean)
-      .map(String);
-    const joined = identifiers.join("|");
-    const remove =
-      PLAYER_VIEW_TYPES.has(viewType) ||
-      PLAYER_PROMO_POSITIONS.has(position) ||
-      joined.includes("heijiao_dj_wiki_pop_channel") ||
-      /UgcVideoChange/i.test(joined);
-    if (!remove) return true;
+      hint?.code, extra?.code, extra?.channelCode, extra?.trp_id,
+    ];
+    if (!remove && !identifiers.some((identifier) => {
+      if (!identifier) return false;
+      const text = String(identifier);
+      return text.includes("heijiao_dj_wiki_pop_channel") || /UgcVideoChange/i.test(text);
+    })) return true;
+    if (!removedTokens) return false;
     if (position) removedTokens.add(String(position));
-    for (const identifier of identifiers) {
+    for (const value of identifiers) {
+      if (!value) continue;
+      const identifier = String(value);
       removedTokens.add(identifier);
-      const suffix = identifier.split("@").pop();
-      if (suffix?.length > 8) removedTokens.add(suffix);
+      const suffix = identifier.slice(identifier.lastIndexOf("@") + 1);
+      if (suffix.length > 8) removedTokens.add(suffix);
     }
     return false;
   });
   if (filtered.length === payload.data.hints.length) return false;
   payload.data.hints = filtered;
-  if (Array.isArray(payload.trp?.rules) && removedTokens.size) {
+  if (removedTokens?.size) {
     const tokens = [...removedTokens];
     payload.trp.rules = payload.trp.rules.filter(
       (rule) => {
@@ -387,7 +376,7 @@ function cleanDailyRecommendation(payload) {
 
 function cleanPlaylistDetail(payload) {
   let changed = cleanSongCollection(
-    payload.playlist?.tracks, payload.privileges, SETTINGS.HideSongQuality,
+    payload.playlist?.tracks, payload.privileges, true,
   );
   for (const track of Array.isArray(payload.playlist?.trackIds) ? payload.playlist.trackIds : []) {
     if (track && Object.prototype.hasOwnProperty.call(track, "dpr")) {
@@ -697,15 +686,12 @@ function cleanSidebarResources(payload) {
   );
   if (!isSidebarResponse) return changes > 0;
 
-  const removedRuleIds = new Set(
-    groups
-      .filter((group) => SIDEBAR_ITEM_CODES.has(getSidebarItemCode(group)))
-      .map((group) => group?.trp_id)
-      .filter(Boolean),
-  );
-  const filteredGroups = groups.filter(
-    (group) => !SIDEBAR_ITEM_CODES.has(getSidebarItemCode(group)),
-  );
+  const removedRuleIds = new Set();
+  const filteredGroups = groups.filter((group) => {
+    if (!SIDEBAR_ITEM_CODES.has(getSidebarItemCode(group))) return true;
+    if (group?.trp_id) removedRuleIds.add(`::${group.trp_id}::`);
+    return false;
+  });
   if (filteredGroups.length !== groups.length) {
     payload.data.dataGroupResourceList = filteredGroups;
     changes += groups.length - filteredGroups.length;
@@ -716,7 +702,7 @@ function cleanSidebarResources(payload) {
   changes += clearSubtitles(payload.data.commonResource);
   changes += clearSubtitles(payload.data.commonResourceList);
   if (Array.isArray(payload.trp?.rules) && removedRuleIds.size) {
-    const tokens = [...removedRuleIds].map((id) => `::${id}::`);
+    const tokens = [...removedRuleIds];
     const filteredRules = payload.trp.rules.filter(
       (rule) => {
         const text = String(rule);

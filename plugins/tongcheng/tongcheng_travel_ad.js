@@ -208,6 +208,17 @@
           changes++;
           return false;
         }
+        if (cell && cell.cellType === 'vbMemberH3' &&
+            Object.prototype.hasOwnProperty.call(cell, 'blackWhale')) {
+          delete cell.blackWhale;
+          changes++;
+        }
+        if (cell && cell.cellType === 'vbOrderV3' && cell.order &&
+            typeof cell.order === 'object' && !Array.isArray(cell.order) &&
+            Object.prototype.hasOwnProperty.call(cell.order, 'tipInfo')) {
+          delete cell.order.tipInfo;
+          changes++;
+        }
         return true;
       });
       if (!cells.length) return {};
@@ -222,19 +233,6 @@
           changes++;
         }
       }
-      cells.forEach(function (cell) {
-        if (cell && cell.cellType === 'vbMemberH3' &&
-            Object.prototype.hasOwnProperty.call(cell, 'blackWhale')) {
-          delete cell.blackWhale;
-          changes++;
-        }
-        if (cell && cell.cellType === 'vbOrderV3' && cell.order &&
-            typeof cell.order === 'object' && !Array.isArray(cell.order) &&
-            Object.prototype.hasOwnProperty.call(cell.order, 'tipInfo')) {
-          delete cell.order.tipInfo;
-          changes++;
-        }
-      });
       if (!changes) return {};
       body.cellList = cells;
     }
@@ -249,8 +247,7 @@
     });
     headers['Content-Type'] = 'application/json; charset=utf-8';
     headers.reqdata = reqdata;
-    headers['X-Tongcheng-Clean'] = 'tongcheng; route=' + routeName +
-      '; format=json; cleanup=' + routeName + '; reqdata=recomputed';
+    headers['X-Tongcheng-Clean'] = 'tongcheng; route=' + routeName;
     return { body: output, headers: headers };
   }
 

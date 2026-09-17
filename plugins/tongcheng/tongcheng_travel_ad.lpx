@@ -11,21 +11,13 @@ request if ${url} ~= /^https:\/\/wx\.17u\.cn\/mihawkapi\/ad\/info(?:\?.*)?$/ the
 
 response if ${url} ~= /^https:\/\/m\.ly\.com\/wlfrontend\/module\/index\/appIndexStaticConfig(?:\?.*)?$/ && ${response.status} == 200 then response.json.jq("if .IsSucess == true and (.Body.bannerInfo.bannerList | type) == \"array\" then .Body.bannerInfo.bannerList = [] | .Body.bannerInfo.total = 0 else . end")
 
-request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appindexnew\/index\/openscreen(?:\?.*)?$/ then reject(200)
+request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appindexnew\/index\/(?:openscreen|appPopup|newmemberzone|getsecondfloorlist)(?:\?.*)?$/ then reject(200)
 
 request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/userextend\/member\/screenPop(?:\?.*)?$/ then reject(200)
 
-request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appindexnew\/index\/appPopup(?:\?.*)?$/ then reject(200)
-
-request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appindexnew\/index\/newmemberzone(?:\?.*)?$/ then reject(200)
-
-request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appindexnew\/index\/getsecondfloorlist(?:\?.*)?$/ then reject(200)
-
 request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appfeeds\/recommend(?:\?.*)?$/ then reject(200)
 
-request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appsearch\/check\/hotlist(?:\?.*)?$/ then reject(200)
-
-request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appsearch\/check\/searchnearbyscenery(?:\?.*)?$/ then reject(200)
+request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appsearch\/check\/(?:hotlist|searchnearbyscenery)(?:\?.*)?$/ then reject(200)
 
 [Script]
 response if ${url} ~= /^https:\/\/(?:quic-tcmapi\.elong\.com\/hotel\/getNewMainFlowV2|tcmobileapi\.17usoft\.com\/(?:userextend\/member\/myIndex\/v3|apptravel\/travel\/list|appindexnew\/index\/(?:getindexlayoutcelllist|getindexlayoutconfig|getsearchboxtext)))(?:\?.*)?$/ && ${request.method} == "POST" && ${response.status} == 200 then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/tongcheng/tongcheng_travel_ad.js") with tag="tongcheng", requires_body=true, binary_body_mode=true, timeout=10

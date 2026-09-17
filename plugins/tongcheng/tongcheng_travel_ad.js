@@ -14,10 +14,15 @@
       bytes[offset + 2] * 256 + bytes[offset + 3];
   }
 
+  function exactBuffer(bytes) {
+    return bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength ?
+      bytes.buffer : bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  }
+
   function digest(codec, block, payload) {
     var md5 = new codec.SparkMD5.ArrayBuffer();
-    md5.append(block.buffer.slice(block.byteOffset, block.byteOffset + block.byteLength));
-    md5.append(payload.buffer.slice(payload.byteOffset, payload.byteOffset + payload.byteLength));
+    md5.append(exactBuffer(block));
+    md5.append(exactBuffer(payload));
     var raw = md5.end(true);
     var result = new Uint8Array(16);
     for (var i = 0; i < 16; i++) result[i] = raw.charCodeAt(i);
@@ -49,7 +54,7 @@
 
   function responseDigest(codec, bytes) {
     var md5 = new codec.SparkMD5.ArrayBuffer();
-    md5.append(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+    md5.append(exactBuffer(bytes));
     var suffix = encodeUTF8("9421B33C-E398-4039-87E8-B46DC3C26E74");
     md5.append(suffix.buffer);
     return md5.end();
@@ -98,12 +103,13 @@
         return list.some(function (item) { return item && item.type === type; });
       });
     })) return false;
+    var length = body.menuList.length + body.menuDarkList.length;
     function keep(item) {
       return !item || (item.type !== 'Tab_Destination_Flutter' && item.type !== 'tab_welfarecenter');
     }
     body.menuList = body.menuList.filter(keep);
     body.menuDarkList = body.menuDarkList.filter(keep);
-    return true;
+    return body.menuList.length + body.menuDarkList.length !== length;
   }
 
   function cleanHotel() {
@@ -184,20 +190,16 @@
     var changes = 0;
     if (routeName === 'home') {
       if (!cleanHome(body)) return {};
-      changes = 1;
     } else if (routeName === 'navigation') {
       if (!cleanNavigation(body)) return {};
-      changes = 1;
     } else if (routeName === 'search') {
-      if (!Array.isArray(body.itemList)) return {};
+      if (!Array.isArray(body.itemList) || !body.itemList.length) return {};
       body.itemList = [];
-      changes = 1;
     } else if (routeName === 'trip') {
       if (!body.emptyHeadData || !body.emptyHeadData.choiceLines) {
         return {};
       }
       delete body.emptyHeadData.choiceLines;
-      changes = 1;
     } else {
       if (!Array.isArray(body.cellList)) return {};
       var cells = body.cellList.filter(function (cell) {

@@ -221,9 +221,9 @@
         }
       }
       cells.forEach(function (cell) {
-        if (cell && cell.cellType === 'vbMemberH3' && cell.blackWhale &&
-            Array.isArray(cell.blackWhale.itemList) && cell.blackWhale.itemList.length) {
-          cell.blackWhale.itemList = [];
+        if (cell && cell.cellType === 'vbMemberH3' &&
+            Object.prototype.hasOwnProperty.call(cell, 'blackWhale')) {
+          delete cell.blackWhale;
           changes++;
         }
         if (cell && cell.cellType === 'vbOrderV3' && cell.order &&

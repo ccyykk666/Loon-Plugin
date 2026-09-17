@@ -28,48 +28,13 @@ const SETTINGS = {
 const REQUEST_PATH = extractApiPath(globalThis.$request?.url ?? "");
 const RESPONSE_BYTES = globalThis.$response?.body;
 if (!REQUEST_PATH || !(RESPONSE_BYTES instanceof Uint8Array) || !RESPONSE_BYTES.length ||
+    (!SETTINGS.LegacyHomeFramework && !SETTINGS.BottomSimple &&
+      REQUEST_PATH === "/link/home/framework/tab") ||
     (!SETTINGS.MineClean && (
       REQUEST_PATH === "/v1/user/info" ||
       REQUEST_PATH === "/delivery/batch-deliver" ||
       REQUEST_PATH === "/creator/musician/reminder/message/get"
     ))) return $done({});
-
-const TEXT_ENCODER = new TextEncoder();
-const TEXT_DECODER = new TextDecoder("utf-8");
-
-const AES_OPTIONS = {
-  mode: "ecb",
-  padding: "pkcs7",
-  key: TEXT_ENCODER.encode("e82ckenh8dichen8"),
-};
-
-function encryptAesEcb(bytes) {
-  return $crypto.aes.encrypt(bytes, AES_OPTIONS).ciphertext;
-}
-
-function decryptAesEcb(bytes) {
-  return $crypto.aes.decrypt(bytes, AES_OPTIONS);
-}
-
-function isGzip(bytes) {
-  return bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
-}
-
-function ungzip(bytes) {
-  if (!isGzip(bytes)) return bytes;
-  if (typeof globalThis.$utils?.ungzip !== "function")
-    throw new Error("Loon $utils.ungzip is unavailable");
-  return globalThis.$utils.ungzip(bytes);
-}
-
-function decodeResponseBody(bytes) {
-  const decrypted = ungzip(decryptAesEcb(bytes));
-  return JSON.parse(TEXT_DECODER.decode(decrypted));
-}
-
-function encodeResponseBody(payload) {
-  return encryptAesEcb(TEXT_ENCODER.encode(JSON.stringify(payload)));
-}
 
 function extractApiPath(url) {
   return (
@@ -142,7 +107,9 @@ function cleanCommentTree(value) {
 function clearSubtitles(value) {
   if (!value || typeof value !== "object") return 0;
   let changes = 0;
-  for (const [key, child] of Object.entries(value)) {
+  for (const key in value) {
+    if (!Object.prototype.hasOwnProperty.call(value, key)) continue;
+    const child = value[key];
     if ((key === "subTitle" || key === "subtitle") && child !== "") {
       value[key] = "";
       changes += 1;
@@ -230,9 +197,12 @@ function cleanPlayerHints(payload) {
   if (filtered.length === payload.data.hints.length) return false;
   payload.data.hints = filtered;
   if (Array.isArray(payload.trp?.rules) && removedTokens.size) {
+    const tokens = [...removedTokens];
     payload.trp.rules = payload.trp.rules.filter(
-      (rule) =>
-        ![...removedTokens].some((token) => String(rule).includes(token)),
+      (rule) => {
+        const text = String(rule);
+        return !tokens.some((token) => text.includes(token));
+      },
     );
   }
   return true;
@@ -240,15 +210,12 @@ function cleanPlayerHints(payload) {
 
 function cleanClientExperiments(payload) {
   if (!Array.isArray(payload.data)) return false;
-  let changed = false;
   const index = payload.data.findIndex(
     (experiment) => experiment?.expName === "lyrics_addcomment",
   );
-  if (index >= 0) {
-    payload.data.splice(index, 1);
-    changed = true;
-  }
-  return changed;
+  if (index < 0) return false;
+  payload.data.splice(index, 1);
+  return true;
 }
 
 function cleanWebExperiments(payload) {
@@ -418,14 +385,6 @@ function cleanDailyRecommendation(payload) {
   return changed;
 }
 
-function cleanSongDetail(payload) {
-  return cleanSongCollection(payload.songs, payload.privileges);
-}
-
-function cleanPrivilegeVipBadges(payload) {
-  return cleanSongPrivileges(payload.data);
-}
-
 function cleanPlaylistDetail(payload) {
   let changed = cleanSongCollection(
     payload.playlist?.tracks, payload.privileges, SETTINGS.HideSongQuality,
@@ -472,6 +431,12 @@ function matchesValue(value, expected) {
   if (!value || !expected || typeof value !== "object" ||
       typeof expected !== "object" ||
       Array.isArray(value) !== Array.isArray(expected)) return false;
+  if (Array.isArray(expected)) {
+    if (value.length !== expected.length) return false;
+    for (let i = 0; i < expected.length; i++)
+      if (!matchesValue(value[i], expected[i])) return false;
+    return true;
+  }
   const keys = Object.keys(expected);
   return Object.keys(value).length === keys.length &&
     keys.every((key) => matchesValue(value[key], expected[key]));
@@ -507,7 +472,7 @@ function cleanCommentList(data) {
 }
 
 const SONG_HANDLERS = {
-  "/v3/song/detail": cleanSongDetail,
+  "/v3/song/detail": (payload) => cleanSongCollection(payload.songs, payload.privileges),
   "/v6/playlist/detail": cleanPlaylistDetail,
   "/chart/playlist/detail": cleanPlaylistDetail,
   "/playlist/privilege": (payload) => cleanSongPrivileges(payload.data, true),
@@ -515,8 +480,8 @@ const SONG_HANDLERS = {
     cleanSongCollection(payload.songs, payload.privileges, true),
   "/song/or/podcast/detail": (payload) =>
     cleanSongCollection(payload.data?.songs, payload.data?.privileges, true),
-  "/song/enhance/privilege": cleanPrivilegeVipBadges,
-  "/song/enhance/player/url/v1": cleanPrivilegeVipBadges,
+  "/song/enhance/privilege": (payload) => cleanSongPrivileges(payload.data),
+  "/song/enhance/player/url/v1": (payload) => cleanSongPrivileges(payload.data),
   "/v3/discovery/recommend/songs": cleanDailyRecommendation,
   "/v1/artist/top/song": (payload) => cleanSongCollection(payload.songs, undefined, true),
   "/search/complex/page/v3": cleanSearchResults,
@@ -525,8 +490,10 @@ const SONG_HANDLERS = {
 function cleanArtistPromotions(payload) {
   const data = payload.data;
   if (!Array.isArray(data?.resources)) return false;
-  const changed = replaceValue(data, "resources", []);
-  return replaceValue(data, "valid", false) || changed;
+  if (!data.resources.length && data.valid === false) return false;
+  data.resources = [];
+  data.valid = false;
+  return true;
 }
 
 const HANDLERS = {
@@ -562,7 +529,9 @@ const HANDLERS = {
   },
   "/batch": (payload) => {
     let changed = false;
-    for (const [path, value] of Object.entries(payload)) {
+    for (const path in payload) {
+      if (!Object.prototype.hasOwnProperty.call(payload, path)) continue;
+      const value = payload[path];
       if (!path.startsWith("/api/") || !value || typeof value !== "object") continue;
       const handler = SONG_HANDLERS[path.slice(4).replace(/\/+$/, "")];
       if (handler) changed = handler(value) || changed;
@@ -635,17 +604,11 @@ const HANDLERS = {
     return changed;
   },
   "/v1/user/info": (payload) => {
-    if (!SETTINGS.MineClean) return false;
-    let changed = false;
-    if (payload.fmConfig !== null) {
-      payload.fmConfig = null;
-      changed = true;
-    }
-    if (payload.ticketConfig !== null) {
-      payload.ticketConfig = null;
-      changed = true;
-    }
-    return changed;
+    if (!SETTINGS.MineClean || (payload.fmConfig === null && payload.ticketConfig === null))
+      return false;
+    payload.fmConfig = null;
+    payload.ticketConfig = null;
+    return true;
   },
   "/creator/musician/reminder/message/get": (payload) => {
     if (!SETTINGS.MineClean || !payload.data || payload.data.message === "")
@@ -753,9 +716,12 @@ function cleanSidebarResources(payload) {
   changes += clearSubtitles(payload.data.commonResource);
   changes += clearSubtitles(payload.data.commonResourceList);
   if (Array.isArray(payload.trp?.rules) && removedRuleIds.size) {
+    const tokens = [...removedRuleIds].map((id) => `::${id}::`);
     const filteredRules = payload.trp.rules.filter(
-      (rule) =>
-        ![...removedRuleIds].some((id) => String(rule).includes(`::${id}::`)),
+      (rule) => {
+        const text = String(rule);
+        return !tokens.some((token) => text.includes(token));
+      },
     );
     changes += payload.trp.rules.length - filteredRules.length;
     payload.trp.rules = filteredRules;
@@ -786,20 +752,13 @@ function cleanBottomTabs(payload) {
 }
 
 function cleanHomeFramework(payload) {
-  if (!SETTINGS.LegacyHomeFramework || !payload.data) return false;
-  let changed = false;
-
-  if (payload.data.homeFrameworkType === "fastPlay") {
-    payload.data.homeFrameworkType = "normal";
-    if (payload.data.selectedHomeTopTabCode === "fastPlay") {
-      payload.data.selectedHomeTopTabCode = "rcmd";
-    }
-    if (payload.data.haveShowFastPlayGuide !== false) {
-      payload.data.haveShowFastPlayGuide = false;
-    }
-    changed = true;
-  }
-  return changed;
+  if (!SETTINGS.LegacyHomeFramework || payload.data?.homeFrameworkType !== "fastPlay")
+    return false;
+  payload.data.homeFrameworkType = "normal";
+  if (payload.data.selectedHomeTopTabCode === "fastPlay")
+    payload.data.selectedHomeTopTabCode = "rcmd";
+  payload.data.haveShowFastPlayGuide = false;
+  return true;
 }
 
 function cleanSearchDefaultKeyword(payload) {
@@ -834,21 +793,20 @@ function cleanTopTabs(payload) {
     return Boolean(setting && SETTINGS[setting]);
   });
 
-  const fallback =
-    original.find(
-      (tab) => tab?.resCode === "rcmd" || tab?.title === "推荐",
-    ) ?? original.find((tab) => tab?.resCode !== "fastPlay");
-  const result = filtered.length ? filtered : fallback ? [fallback] : [];
+  if (!filtered.length) {
+    const fallback = original.find((tab) => tab?.resCode === "rcmd" || tab?.title === "推荐") ??
+      original.find((tab) => tab?.resCode !== "fastPlay");
+    if (fallback) filtered.push(fallback);
+  }
+  const result = filtered;
 
   let changed =
     result.length !== original.length ||
     result.some((tab, index) => tab !== original[index]);
   payload.data.commonResourceList = result;
 
-  const allowedTopTabIds = new Set(
-    result.map((tab) => tab?.trp_id).filter(Boolean),
-  );
   if (Array.isArray(payload.trp?.rules) && payload.trp.rules.length) {
+    const allowedTopTabIds = new Set(result.map((tab) => tab?.trp_id).filter(Boolean));
     const filteredRules = payload.trp.rules.filter((rule) => {
       if (typeof rule !== "string" || !rule.startsWith("musicTopTab::")) {
         return true;
@@ -895,19 +853,18 @@ function cleanHomepageBanners(payload) {
   return changed;
 }
 
-function run() {
-  try {
-    const handler = HANDLERS[REQUEST_PATH];
-    const bytes = RESPONSE_BYTES;
-    if (!handler) return $done({});
-    const payload = decodeResponseBody(bytes);
-    if (!handler(payload)) return $done({});
-    return $done({ body: encodeResponseBody(payload) });
-  } catch (error) {
-    console.log(`[网易云音乐净化] 放行原响应：${error?.message ?? error}`);
-    return $done({});
-  }
+try {
+  const handler = HANDLERS[REQUEST_PATH];
+  if (!handler) return $done({});
+  const encoder = new TextEncoder();
+  const options = { mode: "ecb", padding: "pkcs7", key: encoder.encode("e82ckenh8dichen8") };
+  let bytes = $crypto.aes.decrypt(RESPONSE_BYTES, options);
+  if (bytes[0] === 0x1f && bytes[1] === 0x8b) bytes = $utils.ungzip(bytes);
+  const payload = JSON.parse(new TextDecoder().decode(bytes));
+  if (!handler(payload)) return $done({});
+  return $done({ body: $crypto.aes.encrypt(encoder.encode(JSON.stringify(payload)), options).ciphertext });
+} catch (error) {
+  console.log(`[网易云音乐净化] 放行原响应：${error?.message ?? error}`);
+  return $done({});
 }
-
-run();
 })();

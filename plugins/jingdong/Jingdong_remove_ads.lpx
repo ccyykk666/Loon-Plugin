@@ -4,7 +4,7 @@
 #!system=iOS, iPadOS
 #!loon_version=3.5.1(983)
 #!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/jingdong/icon.png
-#!date=2026-09-15
+#!date=2026-09-22
 
 [Argument]
 HomeClean=switch, true, tag=首页净化
@@ -28,7 +28,9 @@ response if ${OrderAds} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/client
 response if ${OrderAds} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=queryListAsyncInfo(?:&|$)/i then response.json.jq("if (.data | type) == \"object\" then .data.guide = {} else . end")
 response if ${ProductClean} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=querySmallVideoWindow(?:&|$)/i then response.json.jq("(.result.contents? | select(type == \"array\")) = []")
 response if ${ProfileClean} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/(?:api|client\.action)\?(?:[^#]*&)?functionId=personalCenter(?:&|$)/ then response.json.delete("data.operationBanner")
-response if ${ProfileClean} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=xview2Config(?:&|$)/ then response.json.jq("del(.data.targets[]? | select(.targetId == 141) | .layers[]? | select(.layerId == 6304 or .layerId == 6305 or .layerId == 6306))")
+response if ${HomeClean} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=xview2Config(?:&|$)/ then response.json.jq("del(.data.targets[]? | select(.targetId == 34))")
+response if ${ProfileClean} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=xview2Config(?:&|$)/ then response.json.jq("del(.data.targets[]? | select(.targetId == 90 or .targetId == 141))")
+response if ${ProfileClean} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=personInfoAsync(?:&|$)/i then response.json.jq("if (.data.motionDataList | type) == \"array\" then .data.motionDataList |= map(select(.refId != \"actionTNFloor\" or (.functionId != \"dianpuguanzhu_1\" and .targetFunctionId != \"dianpuguanzhu\"))) else . end")
 response if ${ProfileClean} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/(?:api|client\.action)\?(?:[^#]*&)?functionId=queryCircleInfo(?:&|$)/i then response.json.jq("(.wareInfoList | select(type == \"array\")) = [] | if has(\"hasNextPage\") then .hasNextPage = false else . end | if has(\"hasNext\") then .hasNext = false else . end")
 
 [Script]

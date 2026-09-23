@@ -140,6 +140,7 @@ const PLAYER_VIEW_TYPES = new Set([
   "FastPlayRecReasonBubbleView",
   "musicianTalk",
   "artistFollow",
+  "PlayerAgentButtonRedDotView",
 ]);
 const PLAYER_PROMO_POSITIONS = new Set([
   "player_vinyl_float_guide",
@@ -199,12 +200,14 @@ function cleanPlayerHints(payload) {
 
 function cleanClientExperiments(payload) {
   if (!Array.isArray(payload.data)) return false;
-  const index = payload.data.findIndex(
-    (experiment) => experiment?.expName === "lyrics_addcomment",
-  );
-  if (index < 0) return false;
-  payload.data.splice(index, 1);
-  return true;
+  let changed = false;
+  for (let index = payload.data.length - 1; index >= 0; index -= 1) {
+    const name = payload.data[index]?.expName;
+    if (name !== "lyrics_addcomment" && name !== "New_Agent_Entry_Added_for_Search") continue;
+    payload.data.splice(index, 1);
+    changed = true;
+  }
+  return changed;
 }
 
 function cleanWebExperiments(payload) {
@@ -212,7 +215,13 @@ function cleanWebExperiments(payload) {
   let changed = false;
   let hasSearchConfig = false;
   let hasSearchLabel = false;
-  for (const experiment of payload.data) {
+  for (let index = payload.data.length - 1; index >= 0; index -= 1) {
+    const experiment = payload.data[index];
+    if (experiment?.expName === "search_add_voice_input") {
+      payload.data.splice(index, 1);
+      changed = true;
+      continue;
+    }
     if (["SearchUI2", "SearchUI3", "SearchSongRec"].includes(experiment?.expName))
       hasSearchConfig = true;
     if (experiment?.expName === "SearchLabel") {
@@ -363,6 +372,20 @@ function cleanSongCollection(songs, privileges, hideQuality = false, clearReason
   return changed;
 }
 
+function cleanPlayMoreItems(payload) {
+  const lists = payload.data?.bottomItem?.itemNodeList;
+  if (!Array.isArray(lists)) return false;
+  let changed = false;
+  for (let index = 0; index < lists.length; index += 1) {
+    if (!Array.isArray(lists[index])) continue;
+    const items = lists[index].filter((item) => item?.uniqueKey !== "magent");
+    if (items.length === lists[index].length) continue;
+    lists[index] = items;
+    changed = true;
+  }
+  return changed;
+}
+
 function cleanDailyRecommendation(payload) {
   const data = payload.data;
   if (!data) return false;
@@ -461,6 +484,7 @@ function cleanCommentList(data) {
 }
 
 const SONG_HANDLERS = {
+  "/song/play/more/list/v2": cleanPlayMoreItems,
   "/v3/song/detail": (payload) => cleanSongCollection(payload.songs, payload.privileges),
   "/v6/playlist/detail": cleanPlaylistDetail,
   "/chart/playlist/detail": cleanPlaylistDetail,

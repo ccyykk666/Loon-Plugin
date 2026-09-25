@@ -4,7 +4,7 @@
 #!system=iOS, iPadOS
 #!loon_version=3.5.1(983)
 #!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/jingdong/icon.png
-#!date=2026-09-22
+#!date=2026-09-25
 
 [Argument]
 HomeClean=switch, true, tag=首页净化
@@ -26,6 +26,7 @@ response if ${HomeClean} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/clien
 response if ${OrderAds} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=newPurchaseWareCheck(?:&|$)/ then response.json.delete("purchaseOrder") | response.json.replace("hitOrderHighPriceNewStyle", 0)
 response if ${OrderAds} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=getGiftBuyEntryInfo(?:&|$)/ then response.json.replace("newMyOrder", false) | response.json.replace("data.newMyOrder", false)
 response if ${OrderAds} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=queryListAsyncInfo(?:&|$)/i then response.json.jq("if (.data | type) == \"object\" then .data.guide = {} else . end")
+response if ${OrderAds} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=obtainBffGrowingInfo(?:&|$)/i then response.json.jq("if (.data.floorList | type) == \"array\" then .data.floorList = [] else . end")
 response if ${ProductClean} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=querySmallVideoWindow(?:&|$)/i then response.json.jq("(.result.contents? | select(type == \"array\")) = []")
 response if ${ProfileClean} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/(?:api|client\.action)\?(?:[^#]*&)?functionId=personalCenter(?:&|$)/ then response.json.delete("data.operationBanner")
 response if ${HomeClean} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=xview2Config(?:&|$)/ then response.json.jq("(.data.targets[]? | select(.targetId == 34) | .layers) = []")

@@ -56,6 +56,7 @@ if (!$response.body) {
         if (
           [
             "async_circleTopicFloor",
+            "async_takeoutCrossFloor",
             "async_taro_contentGrassUpFloor",
             "bannerFloor",
             "bpDynamicFloor",
@@ -91,10 +92,16 @@ if (!$response.body) {
 
     obj.floors = cleanOrderFloors(obj?.floors);
     if (obj?.data) obj.data.floors = cleanOrderFloors(obj.data.floors);
+    if (obj?.data?.ctx) {
+      delete obj.data.ctx.lotteryMap;
+      delete obj.data.ctx.adBannerInfo;
+      delete obj.data.ctx.orderDetailGuide;
+    }
   } else if (options.OrderAds && functionId === "queryFloorDetailInfo") {
     const removeFloorIds = [
       "async_circleTopicFloor",
       "async_recommendFloor",
+      "async_takeoutCrossFloor",
       "async_taro_contentGrassUpFloor",
       "bpDynamicFloor",
       "plusFloor"

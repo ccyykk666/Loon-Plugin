@@ -1,5 +1,5 @@
-#!name=京东去广告
-#!desc=移除京东广告
+#!name=京东底栏版本测试
+#!desc=验证底栏版本过滤
 #!author=ccyykk666[https://github.com/ccyykk666], RuCu6[https://github.com/RuCu6]
 #!system=iOS, iPadOS
 #!loon_version=3.5.1(983)
@@ -21,6 +21,7 @@ response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?fu
 response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?functionId=cart/ then response.json.delete("cartLocationMap.loc_emptyCartFloor2") | response.json.delete("emptyCartRecommendFloor")
 request if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?functionId=(?:cartCouponRecommendGoods|intelligentRecommendSku|searchBoxWord|stationPullService)/ then reject_dict(200)
 response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=start(?:&|$)/i then response.json.jq("(.images | select(type == \"array\")) = [] | if has(\"showTimesDaily\") then .showTimesDaily = 0 else . end")
+response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=readCustomSurfaceList(?:&|$)/ && ${response.status} == 200 then response.json.jq("((.result.modeMap.normal.navigationAll[]?, .result.modeMap.dark.navigationAll[]?) | select(.functionId == \"find\") | .supportedVersion) = \"99.9.9-99.9.9\"")
 
 response if ${HomeClean} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=getTabHomeInfo(?:&|$)/ then response.json.delete("result.iconInfo") | response.json.delete("result.roofTop")
 response if ${OrderAds} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=newPurchaseWareCheck(?:&|$)/ then response.json.delete("purchaseOrder") | response.json.replace("hitOrderHighPriceNewStyle", 0)

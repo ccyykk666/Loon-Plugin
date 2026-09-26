@@ -27,6 +27,7 @@ response if ${url} ~= /^https:\/\/www\.daxuesoutijiang\.com\/dxapp\/study\/home(
 response if ${url} ~= /^https:\/\/www\.daxuesoutijiang\.com\/dxapp\/study\/annualvip(?:\?.*)?$/ && ${response.status} == 200 then response.json.replace("data.data", "")
 
 response if ${url} ~= /^https:\/\/www\.daxuesoutijiang\.com\/dxapp\/question\/banner(?:\?.*)?$/ then response.body.mock("json", `{"errNo":0,"errstr":"succ","data":{"data":""}}`, 200)
+response if ${url} ~= /^https:\/\/www\.daxuesoutijiang\.com\/static\/hy\/dx-core\/resultSingle\/index-[0-9a-f]+-hycache\.html(?:\?.*)?$/ && ${response.status} == 200 then response.body.replace(/<\/head>/, "<style>.extension-wrap{display:none!important}</style></head>")
 
 [MITM]
 hostname = www.daxuesoutijiang.com, apivip.zuoyebang.com

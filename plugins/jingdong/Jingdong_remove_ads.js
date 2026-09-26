@@ -287,7 +287,7 @@ if (!$response.body) {
 
       obj.multipleTabs.content.data = topTabs.filter(
         (tab) =>
-          ![482858, 482857].includes(Number(tab?.id)) &&
+          Number(tab?.id) !== 482858 &&
           tab?.tabName !== "新品"
       );
     }

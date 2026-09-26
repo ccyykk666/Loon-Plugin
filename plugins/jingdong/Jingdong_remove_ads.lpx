@@ -4,7 +4,7 @@
 #!system=iOS, iPadOS
 #!loon_version=3.5.1(983)
 #!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/jingdong/icon.png
-#!date=2026-09-25
+#!date=2026-09-26
 
 [Argument]
 HomeClean=switch, true, tag=首页净化

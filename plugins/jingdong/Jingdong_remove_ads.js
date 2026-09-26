@@ -286,7 +286,9 @@ if (!$response.body) {
       }
 
       obj.multipleTabs.content.data = topTabs.filter(
-        (tab) => ![482858, 482857].includes(Number(tab?.id))
+        (tab) =>
+          ![482858, 482857].includes(Number(tab?.id)) &&
+          tab?.tabName !== "新品"
       );
     }
   } else if (options.HomeClean && functionId === "clickRecommend") {

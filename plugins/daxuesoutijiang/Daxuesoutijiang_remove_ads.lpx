@@ -26,8 +26,8 @@ response if ${url} ~= /^https:\/\/apivip\.zuoyebang\.com\/viponline\/college\/my
 # “我的”页金币推广入口、iOS 广告源及 AI 助手入口
 response if ${url} ~= /^https:\/\/www\.daxuesoutijiang\.com\/dxapp\/home\/config(?:\?.*)?$/ && ${response.status} == 200 then response.json.replace("data.pointsCenter", 0) | response.json.replace("data.materialCoinTaskUrl", "") | response.json.replace("data.personalCoinTaskUrl", "") | response.json.replace("data.adSource", "") | response.json.replace("data.abResMap.iOSAdSource", "") | response.json.replace("data.psAdFreq", 0) | response.json.replace("data.abResMap.show_ai_page", "0") | response.json.replace("data.abResMap.show_search_ai", "0")
 
-# 关闭广告重试与“免广告”促销提示
-response if ${url} ~= /^https:\/\/www\.daxuesoutijiang\.com\/init\/config\/searchtree(?:\?.*)?$/ && ${response.status} == 200 then response.json.replace("data.noAdConfig.adRetryCount", 0) | response.json.replace("data.noAdConfig.videoRetryCount", 0) | response.json.replace("data.noAdPrompt.freqMaxNum", 0)
+# 关闭广告重试与“免广告”促销提示，并移除首页顶部 VIP 标签
+response if ${url} ~= /^https:\/\/www\.daxuesoutijiang\.com\/init\/config\/searchtree(?:\?.*)?$/ && ${response.status} == 200 then response.json.replace("data.noAdConfig.adRetryCount", 0) | response.json.replace("data.noAdConfig.videoRetryCount", 0) | response.json.replace("data.noAdPrompt.freqMaxNum", 0) | response.json.jq("if (.data.tabInfo | type) == \"array\" then .data.tabInfo |= map(select(.id != 964)) else . end")
 
 # 备考页课程促销角标；保留课程、题包、价格与购买状态
 response if ${url} ~= /^https:\/\/www\.daxuesoutijiang\.com\/dxapp\/study\/home(?:\?.*)?$/ && ${response.status} == 200 then response.json.jq(".data.subjectList=((.data.subjectList//[])|map(.saleActivityType=0))")

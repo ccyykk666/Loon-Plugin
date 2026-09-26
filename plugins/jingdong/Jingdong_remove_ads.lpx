@@ -35,7 +35,7 @@ response if ${ProfileClean} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/cl
 response if ${ProfileClean} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/(?:api|client\.action)\?(?:[^#]*&)?functionId=queryCircleInfo(?:&|$)/i then response.json.jq("(.wareInfoList | select(type == \"array\")) = [] | if has(\"hasNextPage\") then .hasNextPage = false else . end | if has(\"hasNext\") then .hasNext = false else . end")
 
 [Script]
-response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=(?:clickRecommend|deliverLayer|hotSearchTerms|myOrderInfo|myjdSetBusiness|newUserAllOrderList|orderTrackBusiness|personinfoBusiness|queryEvaluateFloors|queryFloorDetailInfo|uniformRecommend|uniformRecommend6|wareBusiness|welcomeHome)(?:&|$)/i then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/jingdong/Jingdong_remove_ads.js", {${HomeClean}, ${OrderAds}, ${ProfileClean}, ${ProductClean}}) with tag="jingdong_noad", timeout=20, requires_body=true
+response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=(?:clickRecommend|deliverLayer|myOrderInfo|myjdSetBusiness|newUserAllOrderList|orderTrackBusiness|personinfoBusiness|queryEvaluateFloors|queryFloorDetailInfo|uniformRecommend|uniformRecommend6|wareBusiness|welcomeHome)(?:&|$)/i then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/jingdong/Jingdong_remove_ads.js", {${HomeClean}, ${OrderAds}, ${ProfileClean}, ${ProductClean}}) with tag="jingdong_noad", timeout=20, requires_body=true
 
 [MITM]
 hostname = api.m.jd.com

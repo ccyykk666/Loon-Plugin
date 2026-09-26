@@ -66,19 +66,6 @@ if (!$response.body) {
           continue;
         }
 
-        if (floor?.mId === "virtualServiceCenter") {
-          const centers = floor?.data?.virtualServiceCenters;
-          if (centers?.length > 0) {
-            for (let center of centers) {
-              if (center?.serviceList?.length > 0) {
-                center.serviceList = center.serviceList.filter(
-                  (card) => card?.serviceTitle !== "精选特惠"
-                );
-              }
-            }
-          }
-        }
-
         if (floor?.mId === "customerServiceFloor" && floor?.data?.moreText) {
           if (floor.data.moreIcon) delete floor.data.moreIcon;
           if (floor.data.moreIcon_dark) delete floor.data.moreIcon_dark;
@@ -106,9 +93,7 @@ if (!$response.body) {
       "bpDynamicFloor",
       "plusFloor"
     ];
-    const keepFloor = (floor) =>
-      !removeFloorIds.includes(floor?.mId) &&
-      floor?.data?.title !== "搭配推荐";
+    const keepFloor = (floor) => !removeFloorIds.includes(floor?.mId);
     if (obj?.floors?.length > 0) obj.floors = obj.floors.filter(keepFloor);
     if (obj?.data?.floors?.length > 0) {
       obj.data.floors = obj.data.floors.filter(keepFloor);
@@ -288,7 +273,7 @@ if (!$response.body) {
       obj.multipleTabs.content.data = topTabs.filter(
         (tab) =>
           Number(tab?.id) !== 482858 &&
-          tab?.tabName !== "新品"
+          Number(tab?.tabType) !== 3
       );
     }
   } else if (options.HomeClean && functionId === "clickRecommend") {
@@ -296,18 +281,6 @@ if (!$response.body) {
       obj.data = obj.data.filter(
         (item) => !(item?.insertBizData && item?.tnTemplate)
       );
-    }
-  } else if (options.HomeClean && functionId === "hotSearchTerms") {
-    if (obj?.data?.length > 0) {
-      for (let group of obj.data) {
-        if (!Array.isArray(group?.hotSearchContent)) continue;
-        group.hotSearchContent = group.hotSearchContent.filter((item) => {
-          const text = [item?.iconText, item?.title, item?.showWord]
-            .filter(Boolean)
-            .join(" ");
-          return !text.includes("作业帮");
-        });
-      }
     }
   } else if (options.ProductClean && functionId === "wareBusiness") {
     const data = obj?.commonBaseInfo?.data;

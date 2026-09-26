@@ -1,5 +1,5 @@
-#!name=京东去广告
-#!desc=移除京东广告
+#!name=京东底栏顺序测试
+#!desc=验证京东底栏是否采用网络配置
 #!author=ccyykk666[https://github.com/ccyykk666], RuCu6[https://github.com/RuCu6]
 #!system=iOS, iPadOS
 #!loon_version=3.5.1(983)
@@ -21,7 +21,7 @@ response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?fu
 response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?functionId=cart/ then response.json.delete("cartLocationMap.loc_emptyCartFloor2") | response.json.delete("emptyCartRecommendFloor")
 request if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?functionId=(?:cartCouponRecommendGoods|intelligentRecommendSku|searchBoxWord|stationPullService)/ then reject_dict(200)
 response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=start(?:&|$)/i then response.json.jq("(.images | select(type == \"array\")) = [] | if has(\"showTimesDaily\") then .showTimesDaily = 0 else . end")
-response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=readCustomSurfaceList(?:&|$)/ && ${response.status} == 200 then response.json.jq("if (.result.navigationOrder | type) == \"string\" and (.result.modeMap.normal.navigationAll | type) == \"array\" and (.result.modeMap.dark.navigationAll | type) == \"array\" then .result.navigationOrder |= (split(\",\") | map(select(. != \"find\")) | join(\",\")) | (.result.modeMap.normal.navigationAll, .result.modeMap.dark.navigationAll) |= (map(select(.functionId != \"find\")) | to_entries | map(.value.position = (.key + 1) | .value)) | (.result.modeMap.dark.navigationAll[]? | select(.order | type == \"string\") | .order) |= (split(\",\") | map(select(. != \"find\")) | join(\",\")) else . end")
+response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=readCustomSurfaceList(?:&|$)/ && ${response.status} == 200 then response.json.jq("if (.result.navigationOrder | type) == \"string\" and (.result.modeMap.normal.navigationAll | type) == \"array\" and (.result.modeMap.dark.navigationAll | type) == \"array\" then .result.navigationOrder |= (split(\",\") | (map(select(. != \"find\")) + map(select(. == \"find\"))) | join(\",\")) | (.result.modeMap.normal.navigationAll, .result.modeMap.dark.navigationAll) |= ((map(select(.functionId != \"find\")) + map(select(.functionId == \"find\"))) | to_entries | map(.value.position = (.key + 1) | .value)) | (.result.modeMap.dark.navigationAll[]? | select(.order | type == \"string\") | .order) |= (split(\",\") | (map(select(. != \"find\")) + map(select(. == \"find\"))) | join(\",\")) else . end")
 
 response if ${HomeClean} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=getTabHomeInfo(?:&|$)/ then response.json.delete("result.iconInfo") | response.json.delete("result.roofTop")
 response if ${OrderAds} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=newPurchaseWareCheck(?:&|$)/ then response.json.delete("purchaseOrder") | response.json.replace("hitOrderHighPriceNewStyle", 0)

@@ -4,7 +4,7 @@
 #!system=iOS, iPadOS
 #!loon_version=3.5.1(983)
 #!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/jingdong/icon.png
-#!date=2026-09-26
+#!date=2026-10-04
 
 [Argument]
 HomeClean=switch, true, tag=首页净化
@@ -16,6 +16,7 @@ ProductClean=switch, true, tag=商品页净化
 AND, ((DOMAIN, api.m.jd.com), (PROTOCOL, TCP)), REJECT-NO-DROP
 
 [Rewrite]
+request if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=wareBusiness(?:&|$)/i then request.header.set("Accept-Encoding", "gzip, deflate, br") | request.header.del("Available-Dictionary")
 response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?functionId=basicConfig/ then response.json.replace("data.JDMessage.socketmonitor.isSocketEstablishedAhead", 0) | response.json.replace("data.JDMessage.socketmonitor.isSocketReport", 0) | response.json.replace("data.JDHttpToolKit.httpdns.httpdns", 0)
 response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=getBubbleInfo(?:&|$)/ then response.json.jq(".result |= map(select(.position != \"find\" and .extraMap.tab != \"Promotion\")) | if (.result | length) == 0 then .islandConfig = false else . end")
 response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?functionId=cart/ then response.json.delete("cartLocationMap.loc_emptyCartFloor2") | response.json.delete("emptyCartRecommendFloor")
@@ -35,7 +36,7 @@ response if ${ProfileClean} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/cl
 response if ${ProfileClean} == true && ${url} ~= /^https:\/\/api\.m\.jd\.com\/(?:api|client\.action)\?(?:[^#]*&)?functionId=queryCircleInfo(?:&|$)/i then response.json.jq("(.wareInfoList | select(type == \"array\")) = [] | if has(\"hasNextPage\") then .hasNextPage = false else . end | if has(\"hasNext\") then .hasNext = false else . end")
 
 [Script]
-response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=(?:clickRecommend|deliverLayer|myOrderInfo|myjdSetBusiness|newUserAllOrderList|orderTrackBusiness|personinfoBusiness|queryEvaluateFloors|queryFloorDetailInfo|uniformRecommend|uniformRecommend6|wareBusiness|welcomeHome)(?:&|$)/i then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/jingdong/Jingdong_remove_ads.js", {${HomeClean}, ${OrderAds}, ${ProfileClean}, ${ProductClean}}) with tag="jingdong_noad", timeout=20, requires_body=true
+response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=(?:clickRecommend|deliverLayer|myOrderInfo|myjdSetBusiness|newUserAllOrderList|orderTrackBusiness|personinfoBusiness|queryEvaluateFloors|queryFloorDetailInfo|uniformRecommend|uniformRecommend6|wareBusiness|welcomeHome)(?:&|$)/i && (${response.header['Content-Encoding']} == null || ${response.header['Content-Encoding']} ~= /^(?:identity|gzip|deflate|br)$/i) then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/jingdong/Jingdong_remove_ads.js", {${HomeClean}, ${OrderAds}, ${ProfileClean}, ${ProductClean}}) with tag="jingdong_noad", timeout=20, requires_body=true
 
 [MITM]
 hostname = api.m.jd.com

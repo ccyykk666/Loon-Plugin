@@ -498,6 +498,10 @@ const SONG_HANDLERS = {
   "/v3/discovery/recommend/songs": cleanDailyRecommendation,
   "/v1/artist/top/song": (payload) => cleanSongCollection(payload.songs, undefined, true),
   "/search/complex/page/v3": cleanSearchResults,
+  "/search/ai/song/block": (payload) => {
+    if (typeof payload.data?.specJson !== "string" || !payload.data.specJson) return false;
+    return replaceValue(payload, "data", {});
+  },
 };
 
 function cleanArtistPromotions(payload) {

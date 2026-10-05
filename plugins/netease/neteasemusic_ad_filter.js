@@ -497,6 +497,8 @@ const SONG_HANDLERS = {
   "/song/enhance/player/url/v1": (payload) => cleanSongPrivileges(payload.data),
   "/v3/discovery/recommend/songs": cleanDailyRecommendation,
   "/v1/artist/top/song": (payload) => cleanSongCollection(payload.songs, undefined, true),
+  "/playmode/intelligence/list": (payload) =>
+    Array.isArray(payload.data) && cleanSongCollection(payload.data.map((item) => item?.songInfo)),
   "/search/complex/page/v3": cleanSearchResults,
   "/search/ai/song/block": (payload) => {
     if (typeof payload.data?.specJson !== "string" || !payload.data.specJson) return false;

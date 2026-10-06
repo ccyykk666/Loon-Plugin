@@ -698,6 +698,13 @@ function cleanCommentMomentRecommendation(payload) {
 function cleanSidebarResources(payload) {
   if (!payload.data) return false;
   let changes = 0;
+  const resources = payload.data.commonResourceList;
+  if (Array.isArray(resources) && resources.some((item) => item?.positionCode === "artistPageEntrance")) {
+    payload.data.commonResourceList = resources.filter((item) => item?.positionCode !== "artistPageEntrance");
+    if (Array.isArray(payload.trp?.rules))
+      payload.trp.rules = payload.trp.rules.filter((rule) => !String(rule).startsWith("artistPageEntrance::"));
+    changes += 1;
+  }
   const crossPosition = payload.data.crossPlatformResource?.positionCode;
   if (crossPosition === "MOMENT_MORE_RCMD_PAGE") {
     payload.data.crossPlatformResource = {};

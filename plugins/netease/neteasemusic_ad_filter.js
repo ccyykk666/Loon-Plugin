@@ -1,17 +1,26 @@
 /*! Original Copyright (c) 2026 Yu9191. Licensed under the MIT License. */
 
 (() => {
-const ARGUMENTS =
-  globalThis.$argument && typeof globalThis.$argument === "object"
-    ? globalThis.$argument
-    : {};
+const REQUEST_PATH = extractApiPath(globalThis.$request?.url ?? "");
+const RESPONSE_BYTES = globalThis.$response?.body;
+if (!REQUEST_PATH || !(RESPONSE_BYTES instanceof Uint8Array) || !RESPONSE_BYTES.length)
+  return $done({});
+if (REQUEST_PATH === "/song/enhance/player/url/v1" || REQUEST_PATH === "/song/enhance/privilege")
+  return processResponse((payload) => cleanSongPrivileges(payload.data));
 
 function readSetting(name, fallback) {
-  const value = ARGUMENTS[name];
+  const args = globalThis.$argument;
+  const value = args && typeof args === "object" ? args[name] : undefined;
   return value === undefined || value === null || value === `{${name}}`
     ? fallback
     : value === true || value === 1 || value === "true" || value === "1";
 }
+
+if (REQUEST_PATH === "/link/position/show/resource")
+  return processResponse(
+    (payload) => cleanSidebarResources(payload, readSetting("MineClean", true)),
+    /artistPageEntrance|MOMENT_MORE_RCMD_PAGE|side_bar_new_|MyPageBar|\\u/,
+  );
 
 const SETTINGS = {
   BottomSimple: readSetting("BottomSimple", true),
@@ -24,10 +33,7 @@ const SETTINGS = {
   TopAI: readSetting("TopAI", false),
   MineClean: readSetting("MineClean", true),
 };
-const REQUEST_PATH = extractApiPath(globalThis.$request?.url ?? "");
-const RESPONSE_BYTES = globalThis.$response?.body;
-if (!REQUEST_PATH || !(RESPONSE_BYTES instanceof Uint8Array) || !RESPONSE_BYTES.length ||
-    (!SETTINGS.LegacyHomeFramework && !SETTINGS.BottomSimple &&
+if ((!SETTINGS.LegacyHomeFramework && !SETTINGS.BottomSimple &&
       REQUEST_PATH === "/link/home/framework/tab") ||
     (!SETTINGS.MineClean && (
       REQUEST_PATH === "/v1/user/info" ||
@@ -109,15 +115,10 @@ function clearSubtitles(value) {
   return changes;
 }
 
-const SIDEBAR_ITEM_CODES = new Set([
-  "ai_songwriting",
-  "mall",
-  "concert",
-  "cloud_push_song",
-]);
-
-function getSidebarItemCode(item) {
-  return item?.sideBarItemData3?.code ?? item?.code;
+function isSidebarPromotion(item) {
+  const code = item?.sideBarItemData3?.code ?? item?.code;
+  return code === "ai_songwriting" || code === "mall" ||
+    code === "concert" || code === "cloud_push_song";
 }
 
 function filterGeneralizedObjects(resource) {
@@ -128,7 +129,7 @@ function filterGeneralizedObjects(resource) {
   )
     return 0;
   const filtered = resource.generalizedObject.filter(
-    (item) => !SIDEBAR_ITEM_CODES.has(getSidebarItemCode(item)),
+    (item) => !isSidebarPromotion(item),
   );
   const removed = resource.generalizedObject.length - filtered.length;
   if (removed) resource.generalizedObject = filtered;
@@ -377,10 +378,9 @@ function cleanPlayMoreItems(payload) {
   if (!Array.isArray(lists)) return false;
   let changed = false;
   for (let index = 0; index < lists.length; index += 1) {
-    if (!Array.isArray(lists[index])) continue;
-    const items = lists[index].filter((item) => item?.uniqueKey !== "magent");
-    if (items.length === lists[index].length) continue;
-    lists[index] = items;
+    const items = lists[index];
+    if (!Array.isArray(items) || !items.some((item) => item?.uniqueKey === "magent")) continue;
+    lists[index] = items.filter((item) => item?.uniqueKey !== "magent");
     changed = true;
   }
   return changed;
@@ -643,7 +643,6 @@ const HANDLERS = {
     if (!payload.data?.cashierTabPopup) return false;
     return replaceValue(payload.data, "cashierTabPopup", {});
   },
-  "/link/position/show/resource": cleanSidebarResources,
   "/delivery/batch-deliver": (payload) => {
     if (
       !SETTINGS.MineClean ||
@@ -695,7 +694,7 @@ function cleanCommentMomentRecommendation(payload) {
   return true;
 }
 
-function cleanSidebarResources(payload) {
+function cleanSidebarResources(payload, mineClean) {
   if (!payload.data) return false;
   let changes = 0;
   const resources = payload.data.commonResourceList;
@@ -710,7 +709,7 @@ function cleanSidebarResources(payload) {
     payload.data.crossPlatformResource = {};
     changes += 1;
   }
-  if (!SETTINGS.MineClean) return changes > 0;
+  if (!mineClean) return changes > 0;
   if (["MyPageBar", "MyPageBarRN"].includes(crossPosition)) {
     payload.data.crossPlatformResource = {};
     changes += 1;
@@ -725,7 +724,7 @@ function cleanSidebarResources(payload) {
 
   const removedRuleIds = new Set();
   const filteredGroups = groups.filter((group) => {
-    if (!SIDEBAR_ITEM_CODES.has(getSidebarItemCode(group))) return true;
+    if (!isSidebarPromotion(group)) return true;
     if (group?.trp_id) removedRuleIds.add(`::${group.trp_id}::`);
     return false;
   });
@@ -808,7 +807,7 @@ function cleanTopTabs(payload) {
   if (!Array.isArray(payload.data?.commonResourceList)) return false;
   const original = payload.data.commonResourceList;
 
-  const filtered = original.filter((tab) => {
+  const result = original.filter((tab) => {
     if (tab?.resCode === "fastPlay") return !SETTINGS.LegacyHomeFramework;
     const setting =
       TOP_TAB_SETTING_BY_CODE[tab?.resCode] ??
@@ -816,12 +815,11 @@ function cleanTopTabs(payload) {
     return Boolean(setting && SETTINGS[setting]);
   });
 
-  if (!filtered.length) {
+  if (!result.length) {
     const fallback = original.find((tab) => tab?.resCode === "rcmd" || tab?.title === "推荐") ??
       original.find((tab) => tab?.resCode !== "fastPlay");
-    if (fallback) filtered.push(fallback);
+    if (fallback) result.push(fallback);
   }
-  const result = filtered;
 
   let changed =
     result.length !== original.length ||
@@ -876,18 +874,23 @@ function cleanHomepageBanners(payload) {
   return changed;
 }
 
-try {
-  const handler = HANDLERS[REQUEST_PATH];
-  if (!handler) return $done({});
-  const encoder = new TextEncoder();
-  const options = { mode: "ecb", padding: "pkcs7", key: encoder.encode("e82ckenh8dichen8") };
-  let bytes = $crypto.aes.decrypt(RESPONSE_BYTES, options);
-  if (bytes[0] === 0x1f && bytes[1] === 0x8b) bytes = $utils.ungzip(bytes);
-  const payload = JSON.parse(new TextDecoder().decode(bytes));
-  if (!handler(payload)) return $done({});
-  return $done({ body: $crypto.aes.encrypt(encoder.encode(JSON.stringify(payload)), options).ciphertext });
-} catch (error) {
-  console.log(`[网易云音乐净化] 放行原响应：${error?.message ?? error}`);
-  return $done({});
+return processResponse(HANDLERS[REQUEST_PATH]);
+
+function processResponse(handler, markers) {
+  try {
+    if (!handler) return $done({});
+    const encoder = new TextEncoder();
+    const options = { mode: "ecb", padding: "pkcs7", key: encoder.encode("e82ckenh8dichen8") };
+    let bytes = $crypto.aes.decrypt(RESPONSE_BYTES, options);
+    if (bytes[0] === 0x1f && bytes[1] === 0x8b) bytes = $utils.ungzip(bytes);
+    const text = new TextDecoder().decode(bytes);
+    if (markers && !markers.test(text)) return $done({});
+    const payload = JSON.parse(text);
+    if (!handler(payload)) return $done({});
+    return $done({ body: $crypto.aes.encrypt(encoder.encode(JSON.stringify(payload)), options).ciphertext });
+  } catch (error) {
+    console.log(`[网易云音乐净化] 放行原响应：${error?.message ?? error}`);
+    return $done({});
+  }
 }
 })();

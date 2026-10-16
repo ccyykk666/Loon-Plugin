@@ -576,6 +576,7 @@ const HANDLERS = {
   "/search/default/keyword/list": cleanSearchDefaultKeyword,
   "/search/rcmd/keyword/get/v2": cleanSearchRecommendations,
   "/homepage/block/page": cleanHomepageBanners,
+  "/link/page/rcmd/resource/show": cleanHomepageSongTags,
 };
 
 function cleanArtistPromotions(payload) {
@@ -732,6 +733,26 @@ function cleanTopTabs(payload) {
   if (Array.isArray(payload.data.adminList) && payload.data.adminList.length) {
     payload.data.adminList = [];
     changed = true;
+  }
+  return changed;
+}
+
+function cleanHomepageSongTags(payload) {
+  if (!Array.isArray(payload.data?.blocks)) return false;
+  let changed = false;
+  for (const block of payload.data.blocks) {
+    for (const module of Object.values(block?.dslData ?? {})) {
+      if (!Array.isArray(module?.content?.items)) continue;
+      for (const group of module.content.items) {
+        for (const item of Array.isArray(group?.items) ? group.items : [group]) {
+          if (item?.resourceType !== "song" || typeof item.tag !== "string" ||
+              !/^(?:S?VIP|Hi-?Res|SQ|HQ|Dolby|超清母带|沉浸声|无损|臻品(?:音质|全景声|母带))$/i.test(item.tag)) continue;
+          item.tag = "";
+          if (typeof item.tagDisplay === "string") item.tagDisplay = "none";
+          changed = true;
+        }
+      }
+    }
   }
   return changed;
 }

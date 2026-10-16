@@ -164,13 +164,42 @@ function cleanClientExperiments(payload) {
   if (!Array.isArray(payload.data)) return false;
   let changed = false;
   for (let index = payload.data.length - 1; index >= 0; index -= 1) {
-    const name = payload.data[index]?.expName;
+    const experiment = payload.data[index];
+    const name = experiment?.expName;
+    if (name === "search_refresh" || name === "qd_preloadImage")
+      changed = tuneClientExperiment(experiment) || changed;
     if (name !== "lyrics_addcomment" && name !== "New_Agent_Entry_Added_for_Search" &&
         !hideExperimentalGroup(name)) continue;
     payload.data.splice(index, 1);
     changed = true;
   }
   return changed;
+}
+
+function capConfigValue(config, key, limit) {
+  const value = config[key];
+  if (typeof value !== "number" &&
+      !(typeof value === "string" && /^\d+$/.test(value))) return false;
+  const numeric = Number(value);
+  if (!Number.isSafeInteger(numeric) || numeric <= limit) return false;
+  config[key] = typeof value === "string" ? String(limit) : limit;
+  return true;
+}
+
+function tuneClientExperiment(experiment) {
+  const config = experiment.clientConfig;
+  if (!config || typeof config !== "object" || Array.isArray(config)) return false;
+  if (experiment.expName === "search_refresh" && readSetting("ExpNoSearchRefresh", false)) {
+    if (config.backStartRefresh !== "1" && config.backStartRefresh !== 1) return false;
+    config.backStartRefresh = typeof config.backStartRefresh === "string" ? "0" : 0;
+    return true;
+  }
+  if (experiment.expName === "qd_preloadImage" && readSetting("ExpLightPreload", false)) {
+    const bundlesChanged = capConfigValue(config, "ThresholdForPreloadedBundles", 8);
+    const imagesChanged = capConfigValue(config, "ThresholdForPreloadedImages", 100);
+    return bundlesChanged || imagesChanged;
+  }
+  return false;
 }
 
 function hideExperimentalGroup(name) {
@@ -199,6 +228,8 @@ function cleanWebExperiments(payload) {
       changed = true;
       continue;
     }
+    if (experiment?.expName === "search_refresh" || experiment?.expName === "qd_preloadImage")
+      changed = tuneClientExperiment(experiment) || changed;
     if (["SearchUI2", "SearchUI3", "SearchSongRec"].includes(experiment?.expName))
       hasSearchConfig = true;
     if (experiment?.expName === "SearchLabel") {
@@ -373,11 +404,13 @@ function cleanPlayMoreItems(payload) {
   const lists = data.bottomItem?.itemNodeList;
   if (!Array.isArray(lists)) return changed;
   const simple = readSetting("ExpMoreMenu", false);
+  const hiddenKeys = simple
+    ? new Set(["similarFm", "recommendSong", "redAnimeGuide", "ring", "giftCard"]) : null;
   for (let index = lists.length - 1; index >= 0; index -= 1) {
     if (!Array.isArray(lists[index])) continue;
     const items = lists[index].filter((item) => item?.uniqueKey !== "magent" &&
-      !(simple && (["similarFm", "recommendSong", "redAnimeGuide", "ring", "giftCard"]
-        .includes(item?.uniqueKey ?? item?.type) || item?.logInfo?.s_cid === "yunBei")));
+      !(hiddenKeys && (hiddenKeys.has(item?.uniqueKey ?? item?.type) ||
+        item?.logInfo?.s_cid === "yunBei")));
     if (items.length === lists[index].length) continue;
     if (simple && !items.length) lists.splice(index, 1);
     else lists[index] = items;
@@ -433,6 +466,40 @@ function cleanAppCloudConfig(payload) {
   }
   if (readSetting("ExpNoPlayerReward", false) && data.playview_config?.showBSRewardRightIcon === true) {
     data.playview_config.showBSRewardRightIcon = false;
+    changed = true;
+  }
+  if (readSetting("ExpSingleColumn", false))
+    changed = capConfigValue(data, "myMusicPlayListColumnCount", 1) || changed;
+  return changed;
+}
+
+function cleanAIDJScenes(payload) {
+  if (!readSetting("ExpNoAIDJ", false) || !Array.isArray(payload.data)) return false;
+  let changed = false;
+  for (const scene of payload.data) {
+    if (!scene || typeof scene.sourceType !== "string") continue;
+    for (const key of ["hasEntry", "defaultSwitchOn"]) {
+      if (scene[key] !== true) continue;
+      scene[key] = false;
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+function cleanMineLayout(payload) {
+  if (!readSetting("ExpMineLayout", false) || !Array.isArray(payload.data?.minePrivacyList))
+    return false;
+  const hiddenKeys = [
+    "createBtn", "import_playlist", "heart_mode", "fansGroupTag",
+    "mySocialStatus", "myMedal", "musicTag",
+  ];
+  let changed = false;
+  for (const item of payload.data.minePrivacyList) {
+    if (item?.value === -1 || !hiddenKeys.includes(item?.key) ||
+        !Array.isArray(item.availableValueList) || !item.availableValueList.includes(-1) ||
+        !item.availableValueList.includes(item.value)) continue;
+    item.value = -1;
     changed = true;
   }
   return changed;
@@ -540,6 +607,9 @@ const SONG_HANDLERS = {
   "/song/play/user/personal/items": cleanPersonalPlayerItems,
   "/playermode/diy/get": cleanPlayerBackground,
   "/appcustomconfig/get": cleanAppCloudConfig,
+  "/aidj/scene/switch/info/batch/get": cleanAIDJScenes,
+  "/mine/rn/resource/list": cleanMineLayout,
+  "/mine/rn/header/info/get": cleanMineLayout,
   "/v3/song/detail": (payload) => cleanSongCollection(payload.songs, payload.privileges),
   "/v6/playlist/detail": cleanPlaylistDetail,
   "/chart/playlist/detail": cleanPlaylistDetail,

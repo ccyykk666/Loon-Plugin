@@ -20,7 +20,6 @@ const SETTINGS = {
   TopMusic: readSetting("TopMusic", true),
   TopPodcast: readSetting("TopPodcast", true),
   TopBook: readSetting("TopBook", false),
-  TopLive: readSetting("TopLive", false),
   TopAI: readSetting("TopAI", false),
   MineClean: readSetting("MineClean", true),
 };
@@ -62,10 +61,6 @@ function cleanCommentTree(value) {
     return changes;
   }
   if (value.user && typeof value.user === "object") {
-    if (value.user.followed === false) {
-      value.user.followed = true;
-      changes += 1;
-    }
     for (const field of COMMENT_USER_FIELDS) {
       if (field in value.user && value.user[field] !== null) {
         value.user[field] = null;
@@ -94,32 +89,27 @@ function cleanCommentTree(value) {
   }
   return changes;
 }
-
-
-
-
-
-const PLAYER_VIEW_TYPES = new Set([
-  "NMHintMVSwitchView",
-  "FastPlayRecReasonBubbleView",
-  "musicianTalk",
-  "artistFollow",
-  "PlayerAgentButtonRedDotView",
-]);
-const PLAYER_PROMO_POSITIONS = new Set([
-  "player_vinyl_float_guide",
-  "player_bottom_toast",
-  "player_bottom_left_entrance",
-  "player_bottom_left",
-  "player_bottom_left_scene",
-  "fast_player_middle_left_toast",
-  "player_global_bubble",
-  "vinyl_comment_entrance",
-  "playlist_detail_top_banner",
-]);
-
 function cleanPlayerHints(payload) {
   if (!Array.isArray(payload.data?.hints)) return false;
+  const PLAYER_VIEW_TYPES = new Set([
+    "NMHintMVSwitchView",
+    "FastPlayRecReasonBubbleView",
+    "musicianTalk",
+    "artistFollow",
+    "PlayerAgentButtonRedDotView",
+  ]);
+  const PLAYER_PROMO_POSITIONS = new Set([
+    "player_vinyl_float_guide",
+    "player_bottom_toast",
+    "player_bottom_left_entrance",
+    "player_bottom_left",
+    "player_bottom_left_scene",
+    "fast_player_middle_left_toast",
+    "player_global_bubble",
+    "vinyl_comment_entrance",
+    "playlist_detail_top_banner",
+  ]);
+
   const removedTokens = Array.isArray(payload.trp?.rules) && payload.trp.rules.length
     ? new Set() : null;
   const filtered = payload.data.hints.filter((hint) => {
@@ -234,13 +224,13 @@ function cleanSongQuality(privilege) {
   return changed;
 }
 
-const HIDDEN_SEARCH_TAGS = new Set([
-  "VIP", "VIP_DOWNLOAD", "Dolby", "HiRes", "SQ",
-  "Whale_Cloud_Mica_Belt", "Whale_Cloud_Attain_Sound", "WHALE_CLOUD_AROUND",
-]);
-
 function cleanSearchResults(payload) {
   if (!Array.isArray(payload.data?.blocks)) return false;
+  const HIDDEN_SEARCH_TAGS = new Set([
+    "VIP", "VIP_DOWNLOAD", "Dolby", "HiRes", "SQ",
+    "Whale_Cloud_Mica_Belt", "Whale_Cloud_Attain_Sound", "WHALE_CLOUD_AROUND",
+  ]);
+
   let changed = false;
   const blocks = [];
   for (const block of payload.data.blocks) {
@@ -265,10 +255,8 @@ function cleanSearchResults(payload) {
           changed = true;
         }
         const metadata = resource.baseInfo?.metaData;
-        if (!Array.isArray(metadata) || !metadata.length) {
-          changed = cleanSongCollection([resource.baseInfo?.simpleSongData]) || changed;
-          continue;
-        }
+        changed = cleanSongCollection([resource.baseInfo?.simpleSongData]) || changed;
+        if (!Array.isArray(metadata) || !metadata.length) continue;
         const filtered = metadata.filter((tag) => !HIDDEN_SEARCH_TAGS.has(tag));
         if (filtered.length !== metadata.length) {
           resource.baseInfo.metaData = filtered.length ? filtered : [""];
@@ -410,23 +398,11 @@ function cleanPlaylistDetail(payload) {
   return changed;
 }
 
-function cleanPlayerArtistFollow(payload) {
-  if (!Array.isArray(payload.data)) return false;
-  let changed = false;
-  for (const artist of payload.data) {
-    if (artist?.followed !== false) continue;
-    artist.followed = true;
-    changed = true;
-  }
-  return changed;
-}
-
 const TOP_TAB_SETTING_BY_CODE = {
   rcmd: "TopRcmd",
   music: "TopMusic",
   podcast: "TopPodcast",
   vBook: "TopBook",
-  live: "TopLive",
   "ai-generate-song": "TopAI",
 };
 const TOP_TAB_SETTING_BY_TITLE = {
@@ -434,7 +410,6 @@ const TOP_TAB_SETTING_BY_TITLE = {
   音乐: "TopMusic",
   播客: "TopPodcast",
   听书: "TopBook",
-  午夜飞行: "TopLive",
   AI写歌: "TopAI",
 };
 
@@ -460,11 +435,6 @@ function replaceValue(target, key, value) {
   return true;
 }
 
-function replaceData(payload, path, data) {
-  if (payload[path]?.data === undefined) return false;
-  return replaceValue(payload[path], "data", data);
-}
-
 function cleanCommentList(data) {
   if (!data || typeof data !== "object" || Array.isArray(data)) return false;
   let changed = false;
@@ -483,7 +453,7 @@ function cleanCommentList(data) {
   return cleanCommentTree(data) > 0 || changed;
 }
 
-const SONG_HANDLERS = {
+const HANDLERS = {
   "/song/play/more/list/v2": cleanPlayMoreItems,
   "/mine/rn/resource/list": cleanMinePublishButton,
   "/mine/rn/header/info/get": cleanMinePublishButton,
@@ -507,19 +477,6 @@ const SONG_HANDLERS = {
     if (typeof payload.data?.specJson !== "string" || !payload.data.specJson) return false;
     return replaceValue(payload, "data", {});
   },
-};
-
-function cleanArtistPromotions(payload) {
-  const data = payload.data;
-  if (!Array.isArray(data?.resources)) return false;
-  if (!data.resources.length && data.valid === false) return false;
-  data.resources = [];
-  data.valid = false;
-  return true;
-}
-
-const HANDLERS = {
-  ...SONG_HANDLERS,
   "/community/artist/detail/dynamic": cleanArtistPromotions,
   "/artist/detail/dynamic/v2": cleanArtistPromotions,
   "/homepage/scene/more/rcmd/song": (payload) => {
@@ -540,54 +497,16 @@ const HANDLERS = {
     payload.data.voiceCommentEnabled = false;
     return true;
   },
-  "/batch": (payload) => {
-    let changed = false;
-    for (const path in payload) {
-      if (!Object.prototype.hasOwnProperty.call(payload, path)) continue;
-      const value = payload[path];
-      if (!path.startsWith("/api/") || !value || typeof value !== "object") continue;
-      const handler = SONG_HANDLERS[path.slice(4).replace(/\/+$/, "")];
-      if (handler) changed = handler(value) || changed;
-    }
-    changed =
-      replaceData(payload, "/api/social/event/bff/ad/resources", {}) || changed;
-    changed =
-      replaceData(payload, "/api/ad/get", { code: 200, ads: {} }) || changed;
-    changed =
-      replaceData(
-        payload,
-        "/api/platform/song/bff/grading/song/order/entrance",
-        { songOrderEntrance: {} },
-      ) || changed;
-    if (SETTINGS.MineClean) {
-      changed =
-        replaceData(payload, "/api/creator/musician/reminder/message/get", {
-          message: "",
-        }) || changed;
-    }
-    changed =
-      replaceData(payload, "/api/event/rcmd/topic/list", { topicList: [] }) ||
-      changed;
-    for (const path of [
-      "/api/v2/resource/comments",
-      "/api/v2/resource/comments/preload",
-    ]) {
-      changed = cleanCommentList(payload[path]?.data) || changed;
-    }
-    for (const path of [
-      "/api/comment/feed/inserted/resources",
-      "/api/comment/feed/inserted/resources/combined",
-      "/api/comment/feed/inserted/resources/isolation",
-    ]) {
-      if (payload[path]?.data === undefined) continue;
-      if (path.endsWith("/isolation")) {
-        changed = cleanCommentMomentRecommendation(payload[path]) || changed;
-        continue;
-      }
-      changed = cleanInsertedResources(payload[path], 0) || changed;
-    }
-    return changed;
-  },
+  "/batch": cleanBatch,
+  "/social/event/bff/ad/resources": (payload) =>
+    payload.data !== undefined && replaceValue(payload, "data", {}),
+  "/ad/get": (payload) =>
+    payload.data !== undefined && replaceValue(payload, "data", { code: 200, ads: {} }),
+  "/platform/song/bff/grading/song/order/entrance": (payload) =>
+    payload.data !== undefined && replaceValue(payload, "data", { songOrderEntrance: {} }),
+  "/event/rcmd/topic/list": (payload) =>
+    payload.data !== undefined && replaceValue(payload, "data", { topicList: [] }),
+  "/v2/resource/comments/preload": (payload) => cleanCommentList(payload.data),
   "/v2/resource/comments": (payload) =>
     cleanCommentList(payload.data),
   "/v2/resource/comment/floor/get": (payload) =>
@@ -636,7 +555,6 @@ const HANDLERS = {
   "/link/scene/show/resource/scene-code/player": cleanPlayerHints,
   "/rtrs/abt/front/expinfo/list": cleanClientExperiments,
   "/rtrs/abt/web/expinfo/list": cleanWebExperiments,
-  "/user/sub/artist/exist": cleanPlayerArtistFollow,
   "/link/home/framework/tab": (payload) => {
     const frameworkChanged = cleanHomeFramework(payload);
     const bottomChanged = cleanBottomTabs(payload);
@@ -647,6 +565,41 @@ const HANDLERS = {
   "/search/rcmd/keyword/get/v2": cleanSearchRecommendations,
   "/homepage/block/page": cleanHomepageBanners,
 };
+
+function cleanArtistPromotions(payload) {
+  const data = payload.data;
+  if (!Array.isArray(data?.resources)) return false;
+  if (!data.resources.length && data.valid === false) return false;
+  data.resources = [];
+  data.valid = false;
+  return true;
+}
+
+function cleanBatch(payload) {
+  let changed = false;
+  for (const path in payload) {
+    if (!Object.prototype.hasOwnProperty.call(payload, path) || !path.startsWith("/api/")) continue;
+    const value = payload[path];
+    const apiPath = path.slice(4).replace(/\/+$/, "");
+    if (!value || typeof value !== "object" || Array.isArray(value) || apiPath === "/batch" ||
+        !Object.prototype.hasOwnProperty.call(HANDLERS, apiPath)) continue;
+    changed = HANDLERS[apiPath](value) || changed;
+  }
+  return changed;
+}
+
+function hasCleaningTargets(path, text) {
+  if (text.includes("\\u")) return true;
+  switch (path) {
+    case "/rtrs/abt/front/expinfo/list":
+      return /lyrics_addcomment|New_Agent_Entry_Added_for_Search/.test(text);
+    case "/link/scene/show/resource":
+    case "/link/scene/show/resource/scene-code/player":
+      return /NMHintMVSwitchView|FastPlayRecReasonBubbleView|musicianTalk|artistFollow|PlayerAgentButtonRedDotView|player_vinyl_float_guide|player_bottom_toast|player_bottom_left|fast_player_middle_left_toast|player_global_bubble|vinyl_comment_entrance|playlist_detail_top_banner|heijiao_dj_wiki_pop_channel|UgcVideoChange/i.test(text);
+    default:
+      return true;
+  }
+}
 
 function cleanInsertedResources(payload, offset = Number(payload.data?.offset) || 0) {
   let changed = replaceValue(payload, "data", {
@@ -804,7 +757,9 @@ try {
   const options = { mode: "ecb", padding: "pkcs7", key: encoder.encode("e82ckenh8dichen8") };
   let bytes = $crypto.aes.decrypt(RESPONSE_BYTES, options);
   if (bytes[0] === 0x1f && bytes[1] === 0x8b) bytes = $utils.ungzip(bytes);
-  const payload = JSON.parse(new TextDecoder().decode(bytes));
+  const text = new TextDecoder().decode(bytes);
+  if (!hasCleaningTargets(REQUEST_PATH, text)) return $done({});
+  const payload = JSON.parse(text);
   if (!handler(payload)) return $done({});
   return $done({ body: $crypto.aes.encrypt(encoder.encode(JSON.stringify(payload)), options).ciphertext });
 } catch (error) {

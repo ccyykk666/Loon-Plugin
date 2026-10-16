@@ -122,7 +122,12 @@ try {
   const options = { mode: "ecb", padding: "pkcs7", key: encoder.encode("e82ckenh8dichen8") };
   let bytes = $crypto.aes.decrypt(RESPONSE_BYTES, options);
   if (bytes[0] === 0x1f && bytes[1] === 0x8b) bytes = $utils.ungzip(bytes);
-  const payload = JSON.parse(new TextDecoder().decode(bytes));
+  const text = new TextDecoder().decode(bytes);
+  if (!text.includes("\\u") &&
+      !(SETTINGS.MineClean
+        ? /artistPageEntrance|MOMENT_MORE_RCMD_PAGE|MyPageBar|side_bar_new_/
+        : /artistPageEntrance|MOMENT_MORE_RCMD_PAGE/).test(text)) return $done({});
+  const payload = JSON.parse(text);
   if (!cleanSidebarResources(payload)) return $done({});
   return $done({ body: $crypto.aes.encrypt(encoder.encode(JSON.stringify(payload)), options).ciphertext });
 } catch (error) {

@@ -32,7 +32,9 @@ if (!REQUEST_PATH || !(RESPONSE_BYTES instanceof Uint8Array) || !RESPONSE_BYTES.
     (!SETTINGS.MineClean && (
       REQUEST_PATH === "/v1/user/info" ||
       REQUEST_PATH === "/delivery/batch-deliver" ||
-      REQUEST_PATH === "/creator/musician/reminder/message/get"
+      REQUEST_PATH === "/creator/musician/reminder/message/get" ||
+      REQUEST_PATH === "/mine/rn/resource/list" ||
+      REQUEST_PATH === "/mine/rn/header/info/get"
     ))) return $done({});
 
 function extractApiPath(url) {
@@ -164,55 +166,12 @@ function cleanClientExperiments(payload) {
   if (!Array.isArray(payload.data)) return false;
   let changed = false;
   for (let index = payload.data.length - 1; index >= 0; index -= 1) {
-    const experiment = payload.data[index];
-    const name = experiment?.expName;
-    if (name === "search_refresh" || name === "qd_preloadImage")
-      changed = tuneClientExperiment(experiment) || changed;
-    if (name !== "lyrics_addcomment" && name !== "New_Agent_Entry_Added_for_Search" &&
-        !hideExperimentalGroup(name)) continue;
+    const name = payload.data[index]?.expName;
+    if (name !== "lyrics_addcomment" && name !== "New_Agent_Entry_Added_for_Search") continue;
     payload.data.splice(index, 1);
     changed = true;
   }
   return changed;
-}
-
-function capConfigValue(config, key, limit) {
-  const value = config[key];
-  if (typeof value !== "number" &&
-      !(typeof value === "string" && /^\d+$/.test(value))) return false;
-  const numeric = Number(value);
-  if (!Number.isSafeInteger(numeric) || numeric <= limit) return false;
-  config[key] = typeof value === "string" ? String(limit) : limit;
-  return true;
-}
-
-function tuneClientExperiment(experiment) {
-  const config = experiment.clientConfig;
-  if (!config || typeof config !== "object" || Array.isArray(config)) return false;
-  if (experiment.expName === "search_refresh" && readSetting("ExpNoSearchRefresh", false)) {
-    if (config.backStartRefresh !== "1" && config.backStartRefresh !== 1) return false;
-    config.backStartRefresh = typeof config.backStartRefresh === "string" ? "0" : 0;
-    return true;
-  }
-  if (experiment.expName === "qd_preloadImage" && readSetting("ExpLightPreload", false)) {
-    const bundlesChanged = capConfigValue(config, "ThresholdForPreloadedBundles", 8);
-    const imagesChanged = capConfigValue(config, "ThresholdForPreloadedImages", 100);
-    return bundlesChanged || imagesChanged;
-  }
-  return false;
-}
-
-function hideExperimentalGroup(name) {
-  switch (name) {
-    case "lyricpage-deleteVolumeView0922":
-      return readSetting("ExpRestoreLyricVolume", false);
-    case "showGiftMindEntrance":
-      return readSetting("ExpNoGift", false);
-    case "hy_song_VipLogo":
-      return readSetting("ExpDefaultLogo", false);
-    default:
-      return false;
-  }
 }
 
 function cleanWebExperiments(payload) {
@@ -222,14 +181,11 @@ function cleanWebExperiments(payload) {
   let hasSearchLabel = false;
   for (let index = payload.data.length - 1; index >= 0; index -= 1) {
     const experiment = payload.data[index];
-    if (experiment?.expName === "search_add_voice_input" ||
-        hideExperimentalGroup(experiment?.expName)) {
+    if (experiment?.expName === "search_add_voice_input") {
       payload.data.splice(index, 1);
       changed = true;
       continue;
     }
-    if (experiment?.expName === "search_refresh" || experiment?.expName === "qd_preloadImage")
-      changed = tuneClientExperiment(experiment) || changed;
     if (["SearchUI2", "SearchUI3", "SearchSongRec"].includes(experiment?.expName))
       hasSearchConfig = true;
     if (experiment?.expName === "SearchLabel") {
@@ -403,100 +359,25 @@ function cleanPlayMoreItems(payload) {
   }
   const lists = data.bottomItem?.itemNodeList;
   if (!Array.isArray(lists)) return changed;
-  const simple = readSetting("ExpMoreMenu", false);
-  const hiddenKeys = simple
-    ? new Set(["similarFm", "recommendSong", "redAnimeGuide", "ring", "giftCard"]) : null;
+  const hiddenKeys = new Set(["magent", "similarFm", "recommendSong", "redAnimeGuide", "ring", "giftCard"]);
   for (let index = lists.length - 1; index >= 0; index -= 1) {
     if (!Array.isArray(lists[index])) continue;
-    const items = lists[index].filter((item) => item?.uniqueKey !== "magent" &&
-      !(hiddenKeys && (hiddenKeys.has(item?.uniqueKey ?? item?.type) ||
-        item?.logInfo?.s_cid === "yunBei")));
+    const items = lists[index].filter((item) =>
+      !hiddenKeys.has(item?.uniqueKey ?? item?.type) && item?.logInfo?.s_cid !== "yunBei");
     if (items.length === lists[index].length) continue;
-    if (simple && !items.length) lists.splice(index, 1);
+    if (!items.length) lists.splice(index, 1);
     else lists[index] = items;
     changed = true;
   }
   return changed;
 }
 
-function cleanPersonalPlayerItems(payload) {
-  if (!readSetting("ExpPlayerButtons", false)) return false;
-  const data = payload.data;
-  const device = data?.sceneDefaultItem?.default;
-  if (!Array.isArray(data?.items) || device?.type !== "device") return false;
-  let changed = false;
-  for (let index = 0; index < data.items.length; index += 1) {
-    const item = data.items[index];
-    if (!["mix_device_aidj", "aidj"].includes(item?.uniqueKey ?? item?.type)) continue;
-    data.items[index] = { ...device };
-    changed = true;
-  }
-  if (changed) data.useDefault = false;
-  return changed;
-}
-
-function cleanPlayerBackground(payload) {
-  if (!readSetting("ExpStaticBackground", false)) return false;
-  const data = payload.data;
-  if (!data || typeof data !== "object") return false;
-  let changed = false;
-  if (typeof data.dynamicBlurUrl === "string" && data.dynamicBlurUrl)
-    changed = replaceValue(data, "dynamicBlurUrl", null);
-  const detail = data.detailInfo;
-  if (!detail || typeof detail !== "object") return changed;
-  if (typeof detail.videoUrl === "string" && detail.videoUrl) {
-    detail.videoUrl = "";
-    if (typeof detail.backgroundStyle === "string") detail.backgroundStyle = "blur";
-    changed = true;
-  }
-  if (detail.videoNosKey != null) {
-    detail.videoNosKey = null;
-    changed = true;
-  }
-  return changed;
-}
-
-function cleanAppCloudConfig(payload) {
-  const data = payload.data;
-  if (!data || typeof data !== "object") return false;
-  let changed = false;
-  if (readSetting("ExpNoYunbei", false) && data.yunbei_rcmd_entry_config?.open === true) {
-    data.yunbei_rcmd_entry_config.open = false;
-    changed = true;
-  }
-  if (readSetting("ExpNoPlayerReward", false) && data.playview_config?.showBSRewardRightIcon === true) {
-    data.playview_config.showBSRewardRightIcon = false;
-    changed = true;
-  }
-  if (readSetting("ExpSingleColumn", false))
-    changed = capConfigValue(data, "myMusicPlayListColumnCount", 1) || changed;
-  return changed;
-}
-
-function cleanAIDJScenes(payload) {
-  if (!readSetting("ExpNoAIDJ", false) || !Array.isArray(payload.data)) return false;
-  let changed = false;
-  for (const scene of payload.data) {
-    if (!scene || typeof scene.sourceType !== "string") continue;
-    for (const key of ["hasEntry", "defaultSwitchOn"]) {
-      if (scene[key] !== true) continue;
-      scene[key] = false;
-      changed = true;
-    }
-  }
-  return changed;
-}
-
-function cleanMineLayout(payload) {
-  if (!readSetting("ExpMineLayout", false) || !Array.isArray(payload.data?.minePrivacyList))
+function cleanMinePublishButton(payload) {
+  if (!SETTINGS.MineClean || !Array.isArray(payload.data?.minePrivacyList))
     return false;
-  const hiddenKeys = [
-    "createBtn", "import_playlist", "heart_mode", "fansGroupTag",
-    "mySocialStatus", "myMedal", "musicTag",
-  ];
   let changed = false;
   for (const item of payload.data.minePrivacyList) {
-    if (item?.value === -1 || !hiddenKeys.includes(item?.key) ||
+    if (item?.key !== "createBtn" || item.value === -1 ||
         !Array.isArray(item.availableValueList) || !item.availableValueList.includes(-1) ||
         !item.availableValueList.includes(item.value)) continue;
     item.value = -1;
@@ -604,12 +485,8 @@ function cleanCommentList(data) {
 
 const SONG_HANDLERS = {
   "/song/play/more/list/v2": cleanPlayMoreItems,
-  "/song/play/user/personal/items": cleanPersonalPlayerItems,
-  "/playermode/diy/get": cleanPlayerBackground,
-  "/appcustomconfig/get": cleanAppCloudConfig,
-  "/aidj/scene/switch/info/batch/get": cleanAIDJScenes,
-  "/mine/rn/resource/list": cleanMineLayout,
-  "/mine/rn/header/info/get": cleanMineLayout,
+  "/mine/rn/resource/list": cleanMinePublishButton,
+  "/mine/rn/header/info/get": cleanMinePublishButton,
   "/v3/song/detail": (payload) => cleanSongCollection(payload.songs, payload.privileges),
   "/v6/playlist/detail": cleanPlaylistDetail,
   "/chart/playlist/detail": cleanPlaylistDetail,

@@ -165,11 +165,25 @@ function cleanClientExperiments(payload) {
   let changed = false;
   for (let index = payload.data.length - 1; index >= 0; index -= 1) {
     const name = payload.data[index]?.expName;
-    if (name !== "lyrics_addcomment" && name !== "New_Agent_Entry_Added_for_Search") continue;
+    if (name !== "lyrics_addcomment" && name !== "New_Agent_Entry_Added_for_Search" &&
+        !hideExperimentalGroup(name)) continue;
     payload.data.splice(index, 1);
     changed = true;
   }
   return changed;
+}
+
+function hideExperimentalGroup(name) {
+  switch (name) {
+    case "lyricpage-deleteVolumeView0922":
+      return readSetting("ExpRestoreLyricVolume", false);
+    case "showGiftMindEntrance":
+      return readSetting("ExpNoGift", false);
+    case "hy_song_VipLogo":
+      return readSetting("ExpDefaultLogo", false);
+    default:
+      return false;
+  }
 }
 
 function cleanWebExperiments(payload) {
@@ -179,7 +193,8 @@ function cleanWebExperiments(payload) {
   let hasSearchLabel = false;
   for (let index = payload.data.length - 1; index >= 0; index -= 1) {
     const experiment = payload.data[index];
-    if (experiment?.expName === "search_add_voice_input") {
+    if (experiment?.expName === "search_add_voice_input" ||
+        hideExperimentalGroup(experiment?.expName)) {
       payload.data.splice(index, 1);
       changed = true;
       continue;
@@ -288,6 +303,19 @@ function cleanSearchRecommendations(payload) {
   return changed;
 }
 
+function cleanSearchTabs(payload) {
+  let changed = false;
+  for (const key of ["algTabs", "defaultTabs"]) {
+    const tabs = payload.data?.[key];
+    if (!Array.isArray(tabs)) continue;
+    const filtered = tabs.filter((tab) => String(tab?.code) !== "5003" && tab?.oid !== "auto_note");
+    if (filtered.length === tabs.length) continue;
+    payload.data[key] = filtered;
+    changed = true;
+  }
+  return changed;
+}
+
 function clearEntitledPrivilegeFee(privilege) {
   if (privilege?.payed !== 1 || privilege.fee === 0) return false;
   privilege.fee = 0;
@@ -335,14 +363,76 @@ function cleanSongCollection(songs, privileges, hideQuality = false, clearReason
 }
 
 function cleanPlayMoreItems(payload) {
-  const lists = payload.data?.bottomItem?.itemNodeList;
-  if (!Array.isArray(lists)) return false;
+  const data = payload.data;
+  if (!data || typeof data !== "object") return false;
   let changed = false;
-  for (let index = 0; index < lists.length; index += 1) {
+  if (data.entranceItem?.bizType === "xindong") {
+    data.entranceItem = null;
+    changed = true;
+  }
+  const lists = data.bottomItem?.itemNodeList;
+  if (!Array.isArray(lists)) return changed;
+  const simple = readSetting("ExpMoreMenu", false);
+  for (let index = lists.length - 1; index >= 0; index -= 1) {
     if (!Array.isArray(lists[index])) continue;
-    const items = lists[index].filter((item) => item?.uniqueKey !== "magent");
+    const items = lists[index].filter((item) => item?.uniqueKey !== "magent" &&
+      !(simple && (["similarFm", "recommendSong", "redAnimeGuide", "ring", "giftCard"]
+        .includes(item?.uniqueKey ?? item?.type) || item?.logInfo?.s_cid === "yunBei")));
     if (items.length === lists[index].length) continue;
-    lists[index] = items;
+    if (simple && !items.length) lists.splice(index, 1);
+    else lists[index] = items;
+    changed = true;
+  }
+  return changed;
+}
+
+function cleanPersonalPlayerItems(payload) {
+  if (!readSetting("ExpPlayerButtons", false)) return false;
+  const data = payload.data;
+  const device = data?.sceneDefaultItem?.default;
+  if (!Array.isArray(data?.items) || device?.type !== "device") return false;
+  let changed = false;
+  for (let index = 0; index < data.items.length; index += 1) {
+    const item = data.items[index];
+    if (!["mix_device_aidj", "aidj"].includes(item?.uniqueKey ?? item?.type)) continue;
+    data.items[index] = { ...device };
+    changed = true;
+  }
+  if (changed) data.useDefault = false;
+  return changed;
+}
+
+function cleanPlayerBackground(payload) {
+  if (!readSetting("ExpStaticBackground", false)) return false;
+  const data = payload.data;
+  if (!data || typeof data !== "object") return false;
+  let changed = false;
+  if (typeof data.dynamicBlurUrl === "string" && data.dynamicBlurUrl)
+    changed = replaceValue(data, "dynamicBlurUrl", null);
+  const detail = data.detailInfo;
+  if (!detail || typeof detail !== "object") return changed;
+  if (typeof detail.videoUrl === "string" && detail.videoUrl) {
+    detail.videoUrl = "";
+    if (typeof detail.backgroundStyle === "string") detail.backgroundStyle = "blur";
+    changed = true;
+  }
+  if (detail.videoNosKey != null) {
+    detail.videoNosKey = null;
+    changed = true;
+  }
+  return changed;
+}
+
+function cleanAppCloudConfig(payload) {
+  const data = payload.data;
+  if (!data || typeof data !== "object") return false;
+  let changed = false;
+  if (readSetting("ExpNoYunbei", false) && data.yunbei_rcmd_entry_config?.open === true) {
+    data.yunbei_rcmd_entry_config.open = false;
+    changed = true;
+  }
+  if (readSetting("ExpNoPlayerReward", false) && data.playview_config?.showBSRewardRightIcon === true) {
+    data.playview_config.showBSRewardRightIcon = false;
     changed = true;
   }
   return changed;
@@ -447,6 +537,9 @@ function cleanCommentList(data) {
 
 const SONG_HANDLERS = {
   "/song/play/more/list/v2": cleanPlayMoreItems,
+  "/song/play/user/personal/items": cleanPersonalPlayerItems,
+  "/playermode/diy/get": cleanPlayerBackground,
+  "/appcustomconfig/get": cleanAppCloudConfig,
   "/v3/song/detail": (payload) => cleanSongCollection(payload.songs, payload.privileges),
   "/v6/playlist/detail": cleanPlaylistDetail,
   "/chart/playlist/detail": cleanPlaylistDetail,
@@ -462,6 +555,7 @@ const SONG_HANDLERS = {
   "/playmode/intelligence/list": (payload) =>
     Array.isArray(payload.data) && cleanSongCollection(payload.data.map((item) => item?.songInfo)),
   "/search/complex/page/v3": cleanSearchResults,
+  "/search/result/tab": cleanSearchTabs,
   "/search/ai/song/block": (payload) => {
     if (typeof payload.data?.specJson !== "string" || !payload.data.specJson) return false;
     return replaceValue(payload, "data", {});

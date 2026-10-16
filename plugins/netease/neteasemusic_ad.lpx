@@ -4,7 +4,7 @@
 #!system=ios
 #!loon_version=3.5.1(988)
 #!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/netease/icon.jpg
-#!date=2026-10-06
+#!date=2026-10-16
 
 [Argument]
 LegacyHomeFramework = switch,true,tag=[首页] 旧版首页
@@ -17,6 +17,15 @@ TopAI = switch,false,tag=[顶栏] AI 写歌
 BottomSimple = switch,true,tag=[底栏] 精简底栏
 
 MineClean = switch,true,tag=[我的] 页面与侧栏净化
+
+ExpPlayerButtons = switch,false,tag=[实验] 底部 AI DJ 改为播放设备
+ExpMoreMenu = switch,false,tag=[实验] 精简播放页更多菜单
+ExpStaticBackground = switch,false,tag=[实验] 停用播放器动态背景
+ExpRestoreLyricVolume = switch,false,tag=[实验] 恢复歌词页音量条
+ExpNoYunbei = switch,false,tag=[实验] 关闭云推歌入口云控
+ExpNoGift = switch,false,tag=[实验] 回退礼物与心动入口云控
+ExpDefaultLogo = switch,false,tag=[实验] 回退 VIP 与音质标识样式
+ExpNoPlayerReward = switch,false,tag=[实验] 关闭播放器奖励图标云控
 
 [Rule]
 DOMAIN, iadmat.nosdn.127.net, REJECT
@@ -34,7 +43,10 @@ response if ${url} ~= /^https?:\/\/(?:(?:ipv4|interface\d*)\.music\.163\.com|mus
 
 [Script]
 response if ${url} ~= /^https?:\/\/(?:(?:ipv4|interface\d*)\.music\.163\.com|music\.163\.com)\/x?eapi\/link\/position\/show\/resource\/?(?:\?.*)?$/i then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/netease/neteasemusic_resource_filter.js", {${MineClean}}) with tag="网易云音乐资源净化", timeout=20, requires_body=true, binary_body_mode=true
-response if ${url} ~= /^https?:\/\/(?:(?:ipv4|interface\d*)\.music\.163\.com|music\.163\.com)\/x?eapi\/(?:batch|v6\/playlist\/detail|chart\/playlist\/detail|song\/(?:mix\/detail|or\/podcast\/detail|play\/more\/list\/v2)|playmode\/intelligence\/list|playlist\/privilege|homepage\/scene\/more\/rcmd\/song|comments\/activity\/airborne\/enable\/voice|v2\/resource\/comments|v2\/resource\/comment\/floor\/get|resource\/comments\/reply\/preload|comment\/feed\/inserted\/resources(?:\/(?:combined|isolation))?|moment\/song\/feed\/get|rtrs\/abt\/(?:front|web)\/expinfo\/list|link\/home\/framework\/(?:tab|top\/tab)|search\/(?:default\/keyword\/list|complex\/page\/v3|rcmd\/keyword\/get\/v2)|homepage\/block\/page|link\/scene\/show\/resource(?:\/scene-code\/player)?|v3\/song\/detail|song\/enhance\/(?:privilege|player\/url\/v1)|v3\/discovery\/recommend\/songs|v1\/artist\/top\/song|community\/artist\/detail\/dynamic|artist\/detail\/dynamic\/v2|user\/sub\/artist\/exist|vipactivity\/app\/cashier\/setting\/get|v1\/user\/info|delivery\/batch-deliver|creator\/musician\/reminder\/message\/get)\/?(?:\?.*)?$/i then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/netease/neteasemusic_ad_filter.js", {${BottomSimple}, ${LegacyHomeFramework}, ${TopRcmd}, ${TopMusic}, ${TopPodcast}, ${TopBook}, ${TopLive}, ${TopAI}, ${MineClean}}) with tag="网易云音乐净化", timeout=20, requires_body=true, binary_body_mode=true
+response if ${url} ~= /^https?:\/\/(?:(?:ipv4|interface\d*)\.music\.163\.com|music\.163\.com)\/x?eapi\/song\/play\/user\/personal\/items\/?(?:\?.*)?$/i then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/netease/neteasemusic_ad_filter.js", {${ExpPlayerButtons}}) with enable=${ExpPlayerButtons}, tag="网易云播放按钮试验", timeout=20, requires_body=true, binary_body_mode=true
+response if ${url} ~= /^https?:\/\/(?:(?:ipv4|interface\d*)\.music\.163\.com|music\.163\.com)\/x?eapi\/playermode\/diy\/get\/?(?:\?.*)?$/i then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/netease/neteasemusic_ad_filter.js", {${ExpStaticBackground}}) with enable=${ExpStaticBackground}, tag="网易云播放器背景试验", timeout=20, requires_body=true, binary_body_mode=true
+response if ${url} ~= /^https?:\/\/(?:(?:ipv4|interface\d*)\.music\.163\.com|music\.163\.com)\/x?eapi\/appcustomconfig\/get\/?(?:\?.*)?$/i && (${ExpNoYunbei} == true || ${ExpNoPlayerReward} == true) then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/netease/neteasemusic_ad_filter.js", {${ExpNoYunbei}, ${ExpNoPlayerReward}}) with tag="网易云入口云控试验", timeout=20, requires_body=true, binary_body_mode=true
+response if ${url} ~= /^https?:\/\/(?:(?:ipv4|interface\d*)\.music\.163\.com|music\.163\.com)\/x?eapi\/(?:batch|v6\/playlist\/detail|chart\/playlist\/detail|song\/(?:mix\/detail|or\/podcast\/detail|play\/more\/list\/v2)|playmode\/intelligence\/list|playlist\/privilege|homepage\/scene\/more\/rcmd\/song|comments\/activity\/airborne\/enable\/voice|v2\/resource\/comments|v2\/resource\/comment\/floor\/get|resource\/comments\/reply\/preload|comment\/feed\/inserted\/resources(?:\/(?:combined|isolation))?|moment\/song\/feed\/get|rtrs\/abt\/(?:front|web)\/expinfo\/list|link\/home\/framework\/(?:tab|top\/tab)|search\/(?:default\/keyword\/list|complex\/page\/v3|rcmd\/keyword\/get\/v2|result\/tab)|homepage\/block\/page|link\/scene\/show\/resource(?:\/scene-code\/player)?|v3\/song\/detail|song\/enhance\/(?:privilege|player\/url\/v1)|v3\/discovery\/recommend\/songs|v1\/artist\/top\/song|community\/artist\/detail\/dynamic|artist\/detail\/dynamic\/v2|user\/sub\/artist\/exist|vipactivity\/app\/cashier\/setting\/get|v1\/user\/info|delivery\/batch-deliver|creator\/musician\/reminder\/message\/get)\/?(?:\?.*)?$/i then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/netease/neteasemusic_ad_filter.js", {${BottomSimple}, ${LegacyHomeFramework}, ${TopRcmd}, ${TopMusic}, ${TopPodcast}, ${TopBook}, ${TopLive}, ${TopAI}, ${MineClean}, ${ExpPlayerButtons}, ${ExpMoreMenu}, ${ExpStaticBackground}, ${ExpRestoreLyricVolume}, ${ExpNoYunbei}, ${ExpNoGift}, ${ExpDefaultLogo}, ${ExpNoPlayerReward}}) with tag="网易云音乐净化", timeout=20, requires_body=true, binary_body_mode=true
 
 [MitM]
 hostname = ipv4.music.163.com, interface.music.163.com, interface2.music.163.com, interface3.music.163.com, interface4.music.163.com, interface5.music.163.com, music.163.com

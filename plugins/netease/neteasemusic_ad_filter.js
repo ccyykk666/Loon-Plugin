@@ -1,40 +1,22 @@
 /*! Original Copyright (c) 2026 Yu9191. Licensed under the MIT License. */
 
 (() => {
-const ARGUMENTS =
-  globalThis.$argument && typeof globalThis.$argument === "object"
-    ? globalThis.$argument
-    : {};
-
-function readSetting(name, fallback) {
-  const value = ARGUMENTS[name];
-  return value === undefined || value === null || value === `{${name}}`
-    ? fallback
-    : value === true || value === 1 || value === "true" || value === "1";
-}
+const ARGUMENTS = globalThis.$argument ?? {};
 
 const SETTINGS = {
-  BottomSimple: readSetting("BottomSimple", true),
-  LegacyHomeFramework: readSetting("LegacyHomeFramework", true),
-  TopRcmd: readSetting("TopRcmd", true),
-  TopMusic: readSetting("TopMusic", true),
-  TopPodcast: readSetting("TopPodcast", true),
-  TopBook: readSetting("TopBook", false),
-  TopAI: readSetting("TopAI", false),
-  MineClean: readSetting("MineClean", true),
+  BottomSimple: ARGUMENTS.BottomSimple ?? true,
+  LegacyHomeFramework: ARGUMENTS.LegacyHomeFramework ?? true,
+  TopRcmd: ARGUMENTS.TopRcmd ?? true,
+  TopMusic: ARGUMENTS.TopMusic ?? true,
+  TopPodcast: ARGUMENTS.TopPodcast ?? true,
+  TopBook: ARGUMENTS.TopBook ?? false,
+  TopAI: ARGUMENTS.TopAI ?? false,
+  MineClean: ARGUMENTS.MineClean ?? true,
 };
 const REQUEST_PATH = extractApiPath(globalThis.$request?.url ?? "");
 const RESPONSE_BYTES = globalThis.$response?.body;
-if (!REQUEST_PATH || !(RESPONSE_BYTES instanceof Uint8Array) || !RESPONSE_BYTES.length ||
-    (!SETTINGS.LegacyHomeFramework && !SETTINGS.BottomSimple &&
-      REQUEST_PATH === "/link/home/framework/tab") ||
-    (!SETTINGS.MineClean && (
-      REQUEST_PATH === "/v1/user/info" ||
-      REQUEST_PATH === "/delivery/batch-deliver" ||
-      REQUEST_PATH === "/creator/musician/reminder/message/get" ||
-      REQUEST_PATH === "/mine/rn/resource/list" ||
-      REQUEST_PATH === "/mine/rn/header/info/get"
-    ))) return $done({});
+if (!REQUEST_PATH || !(RESPONSE_BYTES instanceof Uint8Array) || !RESPONSE_BYTES.length)
+  return $done({});
 
 function extractApiPath(url) {
   return (
@@ -416,13 +398,6 @@ const TOP_TAB_SETTING_BY_CODE = {
   vBook: "TopBook",
   "ai-generate-song": "TopAI",
 };
-const TOP_TAB_SETTING_BY_TITLE = {
-  推荐: "TopRcmd",
-  音乐: "TopMusic",
-  播客: "TopPodcast",
-  听书: "TopBook",
-  AI写歌: "TopAI",
-};
 
 function matchesValue(value, expected) {
   if (value === expected) return true;
@@ -523,7 +498,7 @@ const HANDLERS = {
   "/v2/resource/comment/floor/get": (payload) =>
     cleanCommentTree(payload.data) > 0,
   "/resource/comments/reply/preload": (payload) =>
-    cleanCommentTree(payload.data?.preloadCommentMap ?? payload.data) > 0,
+    cleanCommentTree(payload.data?.preloadCommentMap) > 0,
   "/comment/feed/inserted/resources/combined": cleanInsertedResources,
   "/comment/feed/inserted/resources": cleanInsertedResources,
   "/comment/feed/inserted/resources/isolation": cleanCommentMomentRecommendation,
@@ -602,6 +577,8 @@ function cleanBatch(payload) {
 }
 
 function hasCleaningTargets(path, text) {
+  if (path === "/link/page/rcmd/resource/show")
+    return /"resourceType"\s*:\s*"song"|\\u00/i.test(text);
   if (text.includes("\\u")) return true;
   switch (path) {
     case "/rtrs/abt/front/expinfo/list":
@@ -646,9 +623,7 @@ function cleanBottomTabs(payload) {
   )
     return false;
   const filtered = payload.data.commonResourceList.filter(
-    (tab) =>
-      ["main", "mine"].includes(tab?.resourceType) ||
-      ["首页", "我的"].includes(tab?.title),
+    (tab) => ["main", "mine"].includes(tab?.resourceType),
   );
   if (filtered.length < 2) return false;
   let changed = filtered.length !== payload.data.commonResourceList.length;
@@ -695,20 +670,17 @@ function cleanTopTabs(payload) {
   if (!Array.isArray(payload.data?.commonResourceList)) return false;
   const original = payload.data.commonResourceList;
 
-  const filtered = original.filter((tab) => {
+  const result = original.filter((tab) => {
     if (tab?.resCode === "fastPlay") return !SETTINGS.LegacyHomeFramework;
-    const setting =
-      TOP_TAB_SETTING_BY_CODE[tab?.resCode] ??
-      TOP_TAB_SETTING_BY_TITLE[tab?.title];
+    const setting = TOP_TAB_SETTING_BY_CODE[tab?.resCode];
     return Boolean(setting && SETTINGS[setting]);
   });
 
-  if (!filtered.length) {
-    const fallback = original.find((tab) => tab?.resCode === "rcmd" || tab?.title === "推荐") ??
+  if (!result.length) {
+    const fallback = original.find((tab) => tab?.resCode === "rcmd") ??
       original.find((tab) => tab?.resCode !== "fastPlay");
-    if (fallback) filtered.push(fallback);
+    if (fallback) result.push(fallback);
   }
-  const result = filtered;
 
   let changed =
     result.length !== original.length ||
@@ -741,12 +713,16 @@ function cleanHomepageSongTags(payload) {
   if (!Array.isArray(payload.data?.blocks)) return false;
   let changed = false;
   for (const block of payload.data.blocks) {
-    for (const module of Object.values(block?.dslData ?? {})) {
+    const modules = block?.dslData;
+    for (const key in modules) {
+      if (!Object.prototype.hasOwnProperty.call(modules, key)) continue;
+      const module = modules[key];
       if (!Array.isArray(module?.content?.items)) continue;
       for (const group of module.content.items) {
-        for (const item of Array.isArray(group?.items) ? group.items : [group]) {
-          if (item?.resourceType !== "song" || typeof item.tag !== "string" ||
-              !/^(?:S?VIP|Hi-?Res|SQ|HQ|Dolby|超清母带|沉浸声|无损|臻品(?:音质|全景声|母带))$/i.test(item.tag)) continue;
+        if (!Array.isArray(group?.items)) continue;
+        for (const item of group.items) {
+          if (item?.resourceType !== "song") continue;
+          if (item.tag !== "VIP" && item.tag !== "Hi-Res" && item.tag !== "SQ") continue;
           item.tag = "";
           if (typeof item.tagDisplay === "string") item.tagDisplay = "none";
           changed = true;

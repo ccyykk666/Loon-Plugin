@@ -4,19 +4,7 @@
 const RESPONSE_BYTES = globalThis.$response?.body;
 if (!(RESPONSE_BYTES instanceof Uint8Array) || !RESPONSE_BYTES.length) return $done({});
 
-const ARGUMENTS =
-  globalThis.$argument && typeof globalThis.$argument === "object"
-    ? globalThis.$argument
-    : {};
-
-function readSetting(name, fallback) {
-  const value = ARGUMENTS[name];
-  return value === undefined || value === null || value === `{${name}}`
-    ? fallback
-    : value === true || value === 1 || value === "true" || value === "1";
-}
-
-const SETTINGS = { MineClean: readSetting("MineClean", true) };
+const SETTINGS = { MineClean: globalThis.$argument?.MineClean ?? true };
 
 const SIDEBAR_ITEM_CODES = new Set([
   "ai_songwriting",

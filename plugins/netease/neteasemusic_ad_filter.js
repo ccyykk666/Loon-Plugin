@@ -13,7 +13,19 @@ const SETTINGS = {
   TopAI: ARGUMENTS.TopAI ?? false,
   MineClean: ARGUMENTS.MineClean ?? true,
   NewArtistPage: ARGUMENTS.NewArtistPage ?? false,
+  HomePageVersion: ARGUMENTS.HomePageVersion ?? "不修改",
+  SearchTabExperiment: ARGUMENTS.SearchTabExperiment ?? false,
+  ListenRankVersion: ARGUMENTS.ListenRankVersion ?? "不修改",
+  PlayingListVersion: ARGUMENTS.PlayingListVersion ?? "不修改",
+  PlayingListCover: ARGUMENTS.PlayingListCover ?? "不修改",
+  PlayingListSwipeDelete: ARGUMENTS.PlayingListSwipeDelete ?? "不修改",
+  SearchBestMatchVersion: ARGUMENTS.SearchBestMatchVersion ?? "不修改",
+  QualityPanelVersion: ARGUMENTS.QualityPanelVersion ?? "不修改",
+  EffectPageVersion: ARGUMENTS.EffectPageVersion ?? "不修改",
+  AudioBookHeaderVersion: ARGUMENTS.AudioBookHeaderVersion ?? "不修改",
 };
+const HOME_EXPERIMENT = ["新版首页", "ARK 首页"].includes(SETTINGS.HomePageVersion);
+const USE_LEGACY_HOME = SETTINGS.LegacyHomeFramework && !HOME_EXPERIMENT && !SETTINGS.SearchTabExperiment;
 const REQUEST_PATH = extractApiPath(globalThis.$request?.url ?? "");
 const RESPONSE_BYTES = globalThis.$response?.body;
 if (!REQUEST_PATH || !(RESPONSE_BYTES instanceof Uint8Array) || !RESPONSE_BYTES.length)
@@ -148,8 +160,6 @@ function cleanDailyBottomExperiment(payload) {
 
 function cleanClientExperiments(payload) {
   if (!Array.isArray(payload.data)) return false;
-  const enableArtistPage = SETTINGS.NewArtistPage && payload.code === 200;
-  let hasArtistPage = false;
   let changed = false;
   for (let index = payload.data.length - 1; index >= 0; index -= 1) {
     const experiment = payload.data[index];
@@ -157,16 +167,61 @@ function cleanClientExperiments(payload) {
     if (name === "lyrics_addcomment" || name === "New_Agent_Entry_Added_for_Search") {
       payload.data.splice(index, 1);
       changed = true;
-    } else if (enableArtistPage && name === "Artisit_page_newV1") {
-      hasArtistPage = true;
-      if (experiment.expGroupName !== "t2") {
-        experiment.expGroupName = "t2";
-        changed = true;
-      }
     }
   }
-  if (enableArtistPage && !hasArtistPage) {
-    payload.data.push({ expName: "Artisit_page_newV1", expGroupName: "t2", status: 1, clientConfig: {} });
+  return applyExperimentOverrides(payload, clientExperimentOverrides()) || changed;
+}
+
+function clientExperimentOverrides() {
+  const overrides = {};
+  const choices = [
+    ["minepage_ranklist0422", SETTINGS.ListenRankVersion, { "原生": "c", "RN": "t1" }],
+    ["bofangliebiaozuizhong", SETTINGS.PlayingListVersion, { "旧版": "c", "新版": "t1" }],
+    ["fengmianshiyan", SETTINGS.PlayingListCover, { "隐藏": "c", "显示": "t1" }],
+    ["caozuoanniu", SETTINGS.PlayingListSwipeDelete, { "关闭": "c", "开启": "t1" }],
+    ["SearchBestmatchOptimize", SETTINGS.SearchBestMatchVersion, { "旧版": "c", "新版": "t1", "新版横滑": "t2" }],
+    ["hy-yinzhifuceng", SETTINGS.QualityPanelVersion, { "原生": "c", "RN": "t1" }],
+    ["hy-yxgaiban", SETTINGS.EffectPageVersion, { "旧版": "c", "新版": "t1" }],
+    ["audio-list", SETTINGS.AudioBookHeaderVersion, { "原生": "c", "RN": "t1" }],
+  ];
+  for (const [name, choice, groups] of choices) {
+    if (Object.prototype.hasOwnProperty.call(groups, choice)) overrides[name] = { group: groups[choice] };
+  }
+  if (SETTINGS.NewArtistPage) overrides.Artisit_page_newV1 = { group: "t2" };
+  if (SETTINGS.HomePageVersion === "ARK 首页") overrides["hp-ark"] = { group: "t1" };
+  if (SETTINGS.SearchTabExperiment) {
+    overrides["2026newframe_searchtabtest_distribution"] = { group: "t1" };
+    overrides["2026newframe_listenidentifyandsearchtab_0126"] = {
+      group: "t1",
+      config: {
+        showVoiceRec: false, fixSearchTab: true, searchTabJump: true,
+        showTip: false, showSearchButton: true, bottomTabFixIcon: true,
+      },
+    };
+  }
+  return overrides;
+}
+
+function applyExperimentOverrides(payload, overrides) {
+  if (payload.code !== 200 || !Array.isArray(payload.data) || !Object.keys(overrides).length) return false;
+  let changed = false;
+  const found = new Set();
+  for (const experiment of payload.data) {
+    const name = experiment?.expName;
+    if (!Object.prototype.hasOwnProperty.call(overrides, name)) continue;
+    found.add(name);
+    const { group, config } = overrides[name];
+    changed = replaceValue(experiment, "expGroupName", group) || changed;
+    changed = replaceValue(experiment, "status", 1) || changed;
+    if (config) {
+      experiment.clientConfig ??= {};
+      for (const key in config) changed = replaceValue(experiment.clientConfig, key, config[key]) || changed;
+    }
+  }
+  for (const name in overrides) {
+    if (found.has(name)) continue;
+    const { group, config } = overrides[name];
+    payload.data.push({ expName: name, expGroupName: group, status: 1, clientConfig: config ?? {} });
     changed = true;
   }
   return changed;
@@ -203,7 +258,8 @@ function cleanWebExperiments(payload) {
     payload.data.push({ expName: "SearchLabel", expGroupName: "t1" });
     changed = true;
   }
-  return changed;
+  const group = { "旧版": "c", "新版": "t1", "新版横滑": "t2" }[SETTINGS.SearchBestMatchVersion];
+  return (group ? applyExperimentOverrides(payload, { SearchBestmatchOptimize: { group } }) : false) || changed;
 }
 
 function cleanSongQuality(privilege) {
@@ -611,7 +667,12 @@ function hasCleaningTargets(path, text) {
     case "/experiment/group/batch/get":
       return text.includes("hy-hepaituijian");
     case "/rtrs/abt/front/expinfo/list":
-      return SETTINGS.NewArtistPage ||
+      return SETTINGS.NewArtistPage || SETTINGS.HomePageVersion === "ARK 首页" ||
+        SETTINGS.SearchTabExperiment || [
+          SETTINGS.ListenRankVersion, SETTINGS.PlayingListVersion, SETTINGS.PlayingListCover,
+          SETTINGS.PlayingListSwipeDelete, SETTINGS.SearchBestMatchVersion, SETTINGS.QualityPanelVersion,
+          SETTINGS.EffectPageVersion, SETTINGS.AudioBookHeaderVersion,
+        ].some((choice) => choice !== "不修改") ||
         /lyrics_addcomment|New_Agent_Entry_Added_for_Search/.test(text);
     case "/link/scene/show/resource":
     case "/link/scene/show/resource/scene-code/player":
@@ -648,7 +709,7 @@ function cleanCommentMomentRecommendation(payload) {
 
 function cleanBottomTabs(payload) {
   if (
-    !SETTINGS.BottomSimple ||
+    !SETTINGS.BottomSimple || SETTINGS.SearchTabExperiment ||
     !Array.isArray(payload.data?.commonResourceList)
   )
     return false;
@@ -667,7 +728,12 @@ function cleanBottomTabs(payload) {
 }
 
 function cleanHomeFramework(payload) {
-  if (!SETTINGS.LegacyHomeFramework || payload.data?.homeFrameworkType !== "fastPlay")
+  if (HOME_EXPERIMENT && typeof payload.data?.homeFrameworkType === "string") {
+    let changed = replaceValue(payload.data, "homeFrameworkType", "fastPlay");
+    changed = replaceValue(payload.data, "selectedHomeTopTabCode", "fastPlay") || changed;
+    return changed;
+  }
+  if (!USE_LEGACY_HOME || payload.data?.homeFrameworkType !== "fastPlay")
     return false;
   payload.data.homeFrameworkType = "normal";
   if (payload.data.selectedHomeTopTabCode === "fastPlay")
@@ -701,7 +767,7 @@ function cleanTopTabs(payload) {
   const original = payload.data.commonResourceList;
 
   const result = original.filter((tab) => {
-    if (tab?.resCode === "fastPlay") return !SETTINGS.LegacyHomeFramework;
+    if (tab?.resCode === "fastPlay") return !USE_LEGACY_HOME;
     const setting = TOP_TAB_SETTING_BY_CODE[tab?.resCode];
     return Boolean(setting && SETTINGS[setting]);
   });

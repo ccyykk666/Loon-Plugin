@@ -134,6 +134,17 @@ function cleanPlayerHints(payload) {
   return true;
 }
 
+function cleanDailyBottomExperiment(payload) {
+  if (!Array.isArray(payload.data)) return false;
+  let changed = false;
+  for (const experiment of payload.data) {
+    if (experiment?.abtestname !== "hy-hepaituijian" || experiment.abtestgroup === "c") continue;
+    experiment.abtestgroup = "c";
+    changed = true;
+  }
+  return changed;
+}
+
 function cleanClientExperiments(payload) {
   if (!Array.isArray(payload.data)) return false;
   let changed = false;
@@ -541,6 +552,7 @@ const HANDLERS = {
   "/link/scene/show/resource/scene-code/player": cleanPlayerHints,
   "/rtrs/abt/front/expinfo/list": cleanClientExperiments,
   "/rtrs/abt/web/expinfo/list": cleanWebExperiments,
+  "/experiment/group/batch/get": cleanDailyBottomExperiment,
   "/user/sub/artist/exist": cleanPlayerArtistFollow,
   "/link/home/framework/tab": (payload) => {
     const frameworkChanged = cleanHomeFramework(payload);
@@ -581,6 +593,8 @@ function hasCleaningTargets(path, text) {
     return /"resourceType"\s*:\s*"song"|\\u00/i.test(text);
   if (text.includes("\\u")) return true;
   switch (path) {
+    case "/experiment/group/batch/get":
+      return text.includes("hy-hepaituijian");
     case "/rtrs/abt/front/expinfo/list":
       return /lyrics_addcomment|New_Agent_Entry_Added_for_Search/.test(text);
     case "/link/scene/show/resource":

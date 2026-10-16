@@ -398,6 +398,17 @@ function cleanPlaylistDetail(payload) {
   return changed;
 }
 
+function cleanPlayerArtistFollow(payload) {
+  if (!Array.isArray(payload.data)) return false;
+  let changed = false;
+  for (const artist of payload.data) {
+    if (artist?.followed !== false) continue;
+    artist.followed = true;
+    changed = true;
+  }
+  return changed;
+}
+
 const TOP_TAB_SETTING_BY_CODE = {
   rcmd: "TopRcmd",
   music: "TopMusic",
@@ -555,6 +566,7 @@ const HANDLERS = {
   "/link/scene/show/resource/scene-code/player": cleanPlayerHints,
   "/rtrs/abt/front/expinfo/list": cleanClientExperiments,
   "/rtrs/abt/web/expinfo/list": cleanWebExperiments,
+  "/user/sub/artist/exist": cleanPlayerArtistFollow,
   "/link/home/framework/tab": (payload) => {
     const frameworkChanged = cleanHomeFramework(payload);
     const bottomChanged = cleanBottomTabs(payload);

@@ -12,6 +12,7 @@ const SETTINGS = {
   TopBook: ARGUMENTS.TopBook ?? false,
   TopAI: ARGUMENTS.TopAI ?? false,
   MineClean: ARGUMENTS.MineClean ?? true,
+  ArtistPageVersion: ARGUMENTS.ArtistPageVersion ?? "不修改",
 };
 const REQUEST_PATH = extractApiPath(globalThis.$request?.url ?? "");
 const RESPONSE_BYTES = globalThis.$response?.body;
@@ -147,12 +148,44 @@ function cleanDailyBottomExperiment(payload) {
 
 function cleanClientExperiments(payload) {
   if (!Array.isArray(payload.data)) return false;
+  const groups = payload.code === 200 && SETTINGS.ArtistPageVersion !== "不修改"
+    ? {
+        "旧版原生": ["c", "c", "c"],
+        "新版 t1": ["t1", "c", "c"],
+        "新版 t2": ["t2", "c", "c"],
+        "新版 t3": ["t3", "c", "c"],
+        "新版 t4": ["t4", "c", "c"],
+        "整页 RN t1": ["c", "t1", "c"],
+        "整页 RN t2": ["c", "t2", "c"],
+        "整页 RN V2": ["c", "c", "t1"],
+      }[SETTINGS.ArtistPageVersion]
+    : null;
+  const targets = Array.isArray(groups) && {
+    Artisit_page_newV1: groups[0],
+    Artist_page_full_RN: groups[1],
+    Artist_page_full_RNV2: groups[2],
+  };
+  const missing = targets && new Set(Object.keys(targets));
   let changed = false;
   for (let index = payload.data.length - 1; index >= 0; index -= 1) {
-    const name = payload.data[index]?.expName;
-    if (name !== "lyrics_addcomment" && name !== "New_Agent_Entry_Added_for_Search") continue;
-    payload.data.splice(index, 1);
-    changed = true;
+    const experiment = payload.data[index];
+    const name = experiment?.expName;
+    if (name === "lyrics_addcomment" || name === "New_Agent_Entry_Added_for_Search") {
+      payload.data.splice(index, 1);
+      changed = true;
+    } else if (targets && Object.prototype.hasOwnProperty.call(targets, name)) {
+      missing.delete(name);
+      if (experiment.expGroupName !== targets[name]) {
+        experiment.expGroupName = targets[name];
+        changed = true;
+      }
+    }
+  }
+  if (missing) {
+    for (const name of missing) {
+      payload.data.push({ expName: name, expGroupName: targets[name], status: 1, clientConfig: {} });
+      changed = true;
+    }
   }
   return changed;
 }
@@ -596,7 +629,8 @@ function hasCleaningTargets(path, text) {
     case "/experiment/group/batch/get":
       return text.includes("hy-hepaituijian");
     case "/rtrs/abt/front/expinfo/list":
-      return /lyrics_addcomment|New_Agent_Entry_Added_for_Search/.test(text);
+      return SETTINGS.ArtistPageVersion !== "不修改" ||
+        /lyrics_addcomment|New_Agent_Entry_Added_for_Search/.test(text);
     case "/link/scene/show/resource":
     case "/link/scene/show/resource/scene-code/player":
       return /NMHintMVSwitchView|FastPlayRecReasonBubbleView|musicianTalk|artistFollow|PlayerAgentButtonRedDotView|player_vinyl_float_guide|player_bottom_toast|player_bottom_left|fast_player_middle_left_toast|player_global_bubble|vinyl_comment_entrance|playlist_detail_top_banner|heijiao_dj_wiki_pop_channel|UgcVideoChange/i.test(text);

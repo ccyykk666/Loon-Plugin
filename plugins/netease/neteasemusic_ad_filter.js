@@ -12,6 +12,7 @@ const SETTINGS = {
   TopAI: ARGUMENTS.TopAI ?? false,
   MineClean: ARGUMENTS.MineClean ?? true,
   HomePageVersion: ARGUMENTS.HomePageVersion ?? "跟随服务端",
+  HomeTopLayout: ARGUMENTS.HomeTopLayout ?? "不修改",
   SearchTabExperiment: ARGUMENTS.SearchTabExperiment ?? false,
   SearchPageLayout: ARGUMENTS.SearchPageLayout ?? "不修改",
   ListenRankVersion: ARGUMENTS.ListenRankVersion ?? "不修改",
@@ -721,18 +722,23 @@ function cleanBottomTabs(payload) {
 }
 
 function cleanHomeFramework(payload) {
+  let changed = false;
   if (HOME_EXPERIMENT && typeof payload.data?.homeFrameworkType === "string") {
-    let changed = replaceValue(payload.data, "homeFrameworkType", "fastPlay");
-    changed = replaceValue(payload.data, "selectedHomeTopTabCode", "fastPlay") || changed;
-    return changed;
+    changed = replaceValue(payload.data, "homeFrameworkType", "fastPlay");
+    changed = replaceValue(payload.data, "selectedHomeTopTabCode",
+      SETTINGS.HomeTopLayout === "两项" ? "rcmd" : "fastPlay") || changed;
+  } else if (USE_LEGACY_HOME && payload.data?.homeFrameworkType === "fastPlay") {
+    payload.data.homeFrameworkType = "normal";
+    if (payload.data.selectedHomeTopTabCode === "fastPlay")
+      payload.data.selectedHomeTopTabCode = "rcmd";
+    payload.data.haveShowFastPlayGuide = false;
+    changed = true;
   }
-  if (!USE_LEGACY_HOME || payload.data?.homeFrameworkType !== "fastPlay")
-    return false;
-  payload.data.homeFrameworkType = "normal";
-  if (payload.data.selectedHomeTopTabCode === "fastPlay")
+  if (SETTINGS.HomeTopLayout === "两项" && payload.data?.selectedHomeTopTabCode === "fastPlay") {
     payload.data.selectedHomeTopTabCode = "rcmd";
-  payload.data.haveShowFastPlayGuide = false;
-  return true;
+    changed = true;
+  }
+  return changed;
 }
 
 function cleanSearchDefaultKeyword(payload) {
@@ -758,8 +764,12 @@ function cleanSearchDefaultKeyword(payload) {
 function cleanTopTabs(payload) {
   if (!Array.isArray(payload.data?.commonResourceList)) return false;
   const original = payload.data.commonResourceList;
+  const compactCodes = SETTINGS.HomeTopLayout === "两项" ? ["rcmd", "music"] :
+    SETTINGS.HomeTopLayout === "三项" ? ["fastPlay", "rcmd", "music"] : null;
 
-  const result = original.filter((tab) => {
+  const result = compactCodes ? compactCodes.map((code) => original.find((tab) =>
+    tab?.resCode === code && (code !== "fastPlay" || !USE_LEGACY_HOME),
+  )).filter(Boolean) : original.filter((tab) => {
     if (tab?.resCode === "fastPlay") return !USE_LEGACY_HOME;
     const setting = TOP_TAB_SETTING_BY_CODE[tab?.resCode];
     return Boolean(setting && SETTINGS[setting]);
@@ -775,6 +785,10 @@ function cleanTopTabs(payload) {
     result.length !== original.length ||
     result.some((tab, index) => tab !== original[index]);
   payload.data.commonResourceList = result;
+  if (compactCodes && result.length) {
+    changed = replaceValue(payload.data, "topTabNumType", "fewTab") || changed;
+    changed = replaceValue(payload.data, "topTabStyle", "tab_try_center") || changed;
+  }
 
   if (Array.isArray(payload.trp?.rules) && payload.trp.rules.length) {
     const allowedTopTabIds = new Set(result.map((tab) => tab?.trp_id).filter(Boolean));

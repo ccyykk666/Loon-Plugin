@@ -1,7 +1,13 @@
-#!name=QQ音乐去广告（已停用）
-#!desc=因卡顿和VPN重连反馈暂停使用。当前版本已移除脚本及MITM配置。
+#!name=QQ音乐去广告
+#!desc=移除QQ音乐广告
 #!author=ccyykk666[https://github.com/ccyykk666]
 #!date=2026-10-17
 #!system=iOS, iPadOS
-#!loon_version=3.5.1(988)
+#!loon_version=3.5.3(1008)
 #!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/qqmusic/icon.png
+
+[Rewrite]
+response if ${url} ~= /^https:\/\/music\.y\.qq\.com\/maproxy\/getInfo(?:\?[^#]*)?$/ && ${request.method} == "POST" && ${response.status} == 200 && ${response.header['Content-Type']} ~= /^application\/json(?:\s*;|$)/i then response.json.jq("if type != \"object\" then . elif .ret != 0 then . elif (.rpt_msg_pos_ad_info | type) != \"array\" then . else .rpt_msg_pos_ad_info = [] end")
+
+[Mitm]
+hostname = music.y.qq.com

@@ -1,5 +1,5 @@
 #!name=QQ音乐网络诊断
-#!desc=诊断v3。阶段0仅MITM；1请求头探针，2请求正文，3请求解压，4响应正文，5响应解压；6请求头一行放行，7响应头一行放行。阶段6超时后对照7。所有阶段保留原请求与响应。
+#!desc=诊断v4。0仅MITM；1请求头，2请求正文，3请求解压，4响应正文，5响应解压；6请求头同步放行，7响应头同步放行，8响应头定时器回调放行。所有阶段保留原请求与响应。
 #!author=ccyykk666[https://github.com/ccyykk666]
 #!date=2026-10-17
 #!system=iOS, iPadOS
@@ -7,9 +7,10 @@
 #!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/qqmusic/icon.png
 
 [Argument]
-Stage = select,0,1,2,3,4,5,6,7,type=number,tag=诊断阶段（0为基线；6超时改测7）
+Stage = select,0,1,2,3,4,5,6,7,8,type=number,tag=诊断阶段（0为基线；7复现后对照8）
 
 [Script]
+response if ${Stage} == 8 && ${url} ~= /^https:\/\/(?:u6|szu6)\.y\.qq\.com\/cgi-bin\/musics\.fcg(?:\?[^#]*)?$/ && ${request.method} == "POST" && ${request.header['x-sign-data-type']} ~= /^json$/i && ${response.status} == 200 then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/qqmusic/qqmusic_async_noop_probe.js?v=diag-20261017-4") with tag="QQM-D8-AsyncResponseHeaderNoop", timeout=5
 response if ${Stage} == 7 && ${url} ~= /^https:\/\/(?:u6|szu6)\.y\.qq\.com\/cgi-bin\/musics\.fcg(?:\?[^#]*)?$/ && ${request.method} == "POST" && ${request.header['x-sign-data-type']} ~= /^json$/i && ${response.status} == 200 then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/qqmusic/qqmusic_noop_probe.js?v=diag-20261017-2") with tag="QQM-D7-ResponseHeaderNoop", timeout=5
 request if ${Stage} == 6 && ${url} ~= /^https:\/\/(?:u6|szu6)\.y\.qq\.com\/cgi-bin\/musics\.fcg(?:\?[^#]*)?$/ && ${request.method} == "POST" && ${request.header['x-sign-data-type']} ~= /^json$/i then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/qqmusic/qqmusic_noop_probe.js?v=diag-20261017-2") with tag="QQM-D6-Noop", timeout=5
 request if ${Stage} == 1 && ${url} ~= /^https:\/\/(?:u6|szu6)\.y\.qq\.com\/cgi-bin\/musics\.fcg(?:\?[^#]*)?$/ && ${request.method} == "POST" && ${request.header['x-sign-data-type']} ~= /^json$/i then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/qqmusic/qqmusic_probe.js?v=diag-20261017-1", "request-header") with tag="QQM-D1-Header", timeout=5

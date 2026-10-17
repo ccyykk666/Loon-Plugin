@@ -2,6 +2,8 @@
 
 用户希望减少反复切阶段、抓包和查日志的负担，授权尝试稳定优先的保守处理。本次使用现有捕获完成离线分析，不要求再进行一轮诊断实验。
 
+这是保守版的历史记录。用户随后反馈界面没有明显区别并要求更彻底地处理，当前同一安装地址已更新为 [扩展净化版](qqmusic-enhanced-ad-filter.md)，新增的深度净化默认开启；本页关于“没有 Script”和仅一个 MITM 主机的描述只适用于此前保守版。
+
 ## 实际处理范围
 
 恢复原 [QQ 音乐去广告安装地址](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/qqmusic/qqmusic_ad.lpx)，实现改为一条 Loon 原生 JQ Rewrite：

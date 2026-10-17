@@ -13,7 +13,6 @@ const SETTINGS = {
   TopAI: ARGUMENTS.TopAI ?? false,
   MineClean: ARGUMENTS.MineClean ?? true,
   SearchTabExperiment: ARGUMENTS.SearchTabExperiment ?? false,
-  SearchBoxAtBottom: ARGUMENTS.SearchBoxAtBottom ?? false,
 };
 const REQUEST_PATH = extractApiPath(globalThis.$request?.url ?? "");
 const RESPONSE_BYTES = globalThis.$response?.body;
@@ -163,16 +162,12 @@ function cleanClientExperiments(payload) {
 
 function clientExperimentOverrides() {
   const overrides = {};
-  if (SETTINGS.SearchBoxAtBottom) {
-    overrides.SearchTabIssue3_OldFramework = { group: "t3" };
-    overrides.SearchTabIssue3_SearchTab_Is_the_SoleEntryPoint = { group: "t3" };
-  }
   if (SETTINGS.SearchTabExperiment) {
     overrides["2026newframe_searchtabtest_distribution"] = { group: "t1" };
     overrides["2026newframe_listenidentifyandsearchtab_0126"] = {
       group: "t1",
       config: {
-        showVoiceRec: false, fixSearchTab: true, searchTabJump: true,
+        showVoiceRec: false, fixSearchTab: !SETTINGS.BottomSimple, searchTabJump: true,
         showTip: false, showSearchButton: true, bottomTabFixIcon: true,
       },
     };
@@ -518,6 +513,13 @@ const HANDLERS = {
     payload.data = tabs;
     return true;
   },
+  "/community/artist/home/listActionPoints": (payload) => {
+    if (!Array.isArray(payload.data)) return false;
+    const actions = payload.data.filter((action) => action?.code !== "SUPPORT");
+    if (actions.length === payload.data.length) return false;
+    payload.data = actions;
+    return true;
+  },
   "/song/play/more/list/v2": cleanPlayMoreItems,
   "/mine/rn/resource/list": cleanMinePublishButton,
   "/mine/rn/header/info/get": cleanMinePublishButton,
@@ -651,7 +653,7 @@ function hasCleaningTargets(path, text) {
     case "/experiment/group/batch/get":
       return text.includes("hy-hepaituijian");
     case "/rtrs/abt/front/expinfo/list":
-      return SETTINGS.SearchBoxAtBottom || SETTINGS.SearchTabExperiment ||
+      return SETTINGS.SearchTabExperiment ||
         /lyrics_addcomment|New_Agent_Entry_Added_for_Search/.test(text);
     case "/link/scene/show/resource":
     case "/link/scene/show/resource/scene-code/player":
@@ -693,7 +695,7 @@ function cleanBottomTabs(payload) {
   )
     return false;
   const filtered = payload.data.commonResourceList.filter(
-    (tab) => ["main", "search", "mine"].includes(tab?.resourceType),
+    (tab) => ["main", "mine"].includes(tab?.resourceType),
   );
   if (filtered.length < 2) return false;
   let changed = filtered.length !== payload.data.commonResourceList.length;

@@ -1,5 +1,5 @@
 #!name=QQ音乐网络诊断
-#!desc=诊断v2。阶段0仅MITM，1请求头探针，2请求正文探针，3请求解压，4响应正文探针，5响应解压；阶段1变慢时改测6（仅执行一行放行，无日志）。所有阶段保留原请求与响应。
+#!desc=诊断v3。阶段0仅MITM；1请求头探针，2请求正文，3请求解压，4响应正文，5响应解压；6请求头一行放行，7响应头一行放行。阶段6超时后对照7。所有阶段保留原请求与响应。
 #!author=ccyykk666[https://github.com/ccyykk666]
 #!date=2026-10-17
 #!system=iOS, iPadOS
@@ -7,9 +7,10 @@
 #!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/qqmusic/icon.png
 
 [Argument]
-Stage = select,0,1,2,3,4,5,6,type=number,tag=诊断阶段（从0开始；1变慢改测6）
+Stage = select,0,1,2,3,4,5,6,7,type=number,tag=诊断阶段（0为基线；6超时改测7）
 
 [Script]
+response if ${Stage} == 7 && ${url} ~= /^https:\/\/(?:u6|szu6)\.y\.qq\.com\/cgi-bin\/musics\.fcg(?:\?[^#]*)?$/ && ${request.method} == "POST" && ${request.header['x-sign-data-type']} ~= /^json$/i && ${response.status} == 200 then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/qqmusic/qqmusic_noop_probe.js?v=diag-20261017-2") with tag="QQM-D7-ResponseHeaderNoop", timeout=5
 request if ${Stage} == 6 && ${url} ~= /^https:\/\/(?:u6|szu6)\.y\.qq\.com\/cgi-bin\/musics\.fcg(?:\?[^#]*)?$/ && ${request.method} == "POST" && ${request.header['x-sign-data-type']} ~= /^json$/i then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/qqmusic/qqmusic_noop_probe.js?v=diag-20261017-2") with tag="QQM-D6-Noop", timeout=5
 request if ${Stage} == 1 && ${url} ~= /^https:\/\/(?:u6|szu6)\.y\.qq\.com\/cgi-bin\/musics\.fcg(?:\?[^#]*)?$/ && ${request.method} == "POST" && ${request.header['x-sign-data-type']} ~= /^json$/i then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/qqmusic/qqmusic_probe.js?v=diag-20261017-1", "request-header") with tag="QQM-D1-Header", timeout=5
 request if ${Stage} == 2 && ${url} ~= /^https:\/\/(?:u6|szu6)\.y\.qq\.com\/cgi-bin\/musics\.fcg(?:\?[^#]*)?$/ && ${request.method} == "POST" && ${request.header['x-sign-data-type']} ~= /^json$/i then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/qqmusic/qqmusic_probe.js?v=diag-20261017-1", "request-body") with tag="QQM-D2-RequestBody", timeout=5, requires_body=true, binary_body_mode=true

@@ -265,6 +265,17 @@ function cleanSongQuality(privilege) {
   return changed;
 }
 
+function cleanArtistSongQuality(payload) {
+  if (!Array.isArray(payload.data?.modules)) return false;
+  let changed = false;
+  for (const module of payload.data.modules) {
+    if (module?.blockCode !== "ARTIST_SONGS") continue;
+    for (const song of module.resource?.songData?.songs ?? [])
+      changed = cleanSongQuality(song?.privilege) || changed;
+  }
+  return changed;
+}
+
 function cleanSearchResults(payload) {
   if (!Array.isArray(payload.data?.blocks)) return false;
   const HIDDEN_SEARCH_TAGS = new Set([
@@ -499,6 +510,14 @@ function cleanCommentList(data) {
 }
 
 const HANDLERS = {
+  "/personal/home/page/artist/v2": cleanArtistSongQuality,
+  "/community/artist/home/listTabs": (payload) => {
+    if (!Array.isArray(payload.data)) return false;
+    const tabs = payload.data.filter((tab) => tab?.code !== "FANS_EVENT");
+    if (tabs.length === payload.data.length) return false;
+    payload.data = tabs;
+    return true;
+  },
   "/song/play/more/list/v2": cleanPlayMoreItems,
   "/mine/rn/resource/list": cleanMinePublishButton,
   "/mine/rn/header/info/get": cleanMinePublishButton,
@@ -512,11 +531,6 @@ const HANDLERS = {
     cleanSongCollection(payload.data?.songs, payload.data?.privileges, true),
   "/song/enhance/privilege": (payload) => cleanSongPrivileges(payload.data),
   "/song/enhance/player/url/v1": (payload) => cleanSongPrivileges(payload.data),
-  "/page/fast/play/get": (payload) => {
-    const info = payload.data?.playResourceInfo;
-    if (!info?.songPrivilegeMap) return false;
-    return cleanSongCollection(info.songDataList, Object.values(info.songPrivilegeMap));
-  },
   "/v3/discovery/recommend/songs": cleanDailyRecommendation,
   "/playmode/intelligence/list": (payload) =>
     Array.isArray(payload.data) && cleanSongCollection(payload.data.map((item) => item?.songInfo)),
@@ -674,12 +688,12 @@ function cleanCommentMomentRecommendation(payload) {
 
 function cleanBottomTabs(payload) {
   if (
-    !SETTINGS.BottomSimple || SETTINGS.SearchTabExperiment || SETTINGS.SearchBoxAtBottom ||
+    !SETTINGS.BottomSimple ||
     !Array.isArray(payload.data?.commonResourceList)
   )
     return false;
   const filtered = payload.data.commonResourceList.filter(
-    (tab) => ["main", "mine"].includes(tab?.resourceType),
+    (tab) => ["main", "search", "mine"].includes(tab?.resourceType),
   );
   if (filtered.length < 2) return false;
   let changed = filtered.length !== payload.data.commonResourceList.length;

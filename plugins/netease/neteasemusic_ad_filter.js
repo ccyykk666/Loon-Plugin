@@ -13,11 +13,8 @@ const SETTINGS = {
   TopAI: ARGUMENTS.TopAI ?? false,
   MineClean: ARGUMENTS.MineClean ?? true,
   SearchTabExperiment: ARGUMENTS.SearchTabExperiment ?? false,
-  SearchPageLayout: ARGUMENTS.SearchPageLayout ?? "不修改",
+  SearchBoxAtBottom: ARGUMENTS.SearchBoxAtBottom ?? false,
 };
-const SEARCH_PAGE_GROUP = {
-  "对照 c": "c", "实验 t1": "t1", "实验 t2": "t2", "底置搜索框 t3": "t3",
-}[SETTINGS.SearchPageLayout];
 const REQUEST_PATH = extractApiPath(globalThis.$request?.url ?? "");
 const RESPONSE_BYTES = globalThis.$response?.body;
 if (!REQUEST_PATH || !(RESPONSE_BYTES instanceof Uint8Array) || !RESPONSE_BYTES.length)
@@ -166,9 +163,9 @@ function cleanClientExperiments(payload) {
 
 function clientExperimentOverrides() {
   const overrides = {};
-  if (SEARCH_PAGE_GROUP) {
-    overrides.SearchTabIssue3_OldFramework = { group: SEARCH_PAGE_GROUP };
-    overrides.SearchTabIssue3_SearchTab_Is_the_SoleEntryPoint = { group: SEARCH_PAGE_GROUP };
+  if (SETTINGS.SearchBoxAtBottom) {
+    overrides.SearchTabIssue3_OldFramework = { group: "t3" };
+    overrides.SearchTabIssue3_SearchTab_Is_the_SoleEntryPoint = { group: "t3" };
   }
   if (SETTINGS.SearchTabExperiment) {
     overrides["2026newframe_searchtabtest_distribution"] = { group: "t1" };
@@ -515,6 +512,11 @@ const HANDLERS = {
     cleanSongCollection(payload.data?.songs, payload.data?.privileges, true),
   "/song/enhance/privilege": (payload) => cleanSongPrivileges(payload.data),
   "/song/enhance/player/url/v1": (payload) => cleanSongPrivileges(payload.data),
+  "/page/fast/play/get": (payload) => {
+    const info = payload.data?.playResourceInfo;
+    if (!info?.songPrivilegeMap) return false;
+    return cleanSongCollection(info.songDataList, Object.values(info.songPrivilegeMap));
+  },
   "/v3/discovery/recommend/songs": cleanDailyRecommendation,
   "/playmode/intelligence/list": (payload) =>
     Array.isArray(payload.data) && cleanSongCollection(payload.data.map((item) => item?.songInfo)),
@@ -635,7 +637,7 @@ function hasCleaningTargets(path, text) {
     case "/experiment/group/batch/get":
       return text.includes("hy-hepaituijian");
     case "/rtrs/abt/front/expinfo/list":
-      return SEARCH_PAGE_GROUP || SETTINGS.SearchTabExperiment ||
+      return SETTINGS.SearchBoxAtBottom || SETTINGS.SearchTabExperiment ||
         /lyrics_addcomment|New_Agent_Entry_Added_for_Search/.test(text);
     case "/link/scene/show/resource":
     case "/link/scene/show/resource/scene-code/player":
@@ -672,7 +674,7 @@ function cleanCommentMomentRecommendation(payload) {
 
 function cleanBottomTabs(payload) {
   if (
-    !SETTINGS.BottomSimple || SETTINGS.SearchTabExperiment || SEARCH_PAGE_GROUP ||
+    !SETTINGS.BottomSimple || SETTINGS.SearchTabExperiment || SETTINGS.SearchBoxAtBottom ||
     !Array.isArray(payload.data?.commonResourceList)
   )
     return false;
@@ -740,6 +742,12 @@ function cleanTopTabs(payload) {
     result.length !== original.length ||
     result.some((tab, index) => tab !== original[index]);
   payload.data.commonResourceList = result;
+
+  if (result.length >= 2 && result.length <= 3 &&
+      payload.data.topTabStyle === "tab_try_expand") {
+    payload.data.topTabStyle = "tab_try_center";
+    changed = true;
+  }
 
   if (Array.isArray(payload.trp?.rules) && payload.trp.rules.length) {
     const allowedTopTabIds = new Set(result.map((tab) => tab?.trp_id).filter(Boolean));

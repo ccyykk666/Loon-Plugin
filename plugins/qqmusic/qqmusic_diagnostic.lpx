@@ -1,5 +1,5 @@
 #!name=QQ音乐网络诊断
-#!desc=诊断v7。0仅MITM；1至10为原对照；11先用轻量请求解码识别首页福利广告位，仅对该独立接口初始化响应解码库。全部原样放行，不去广告。11日志应有TARGET_DECODE_OK。
+#!desc=诊断v8。0仅MITM；1至11为原对照；12从脚本中彻底移除响应解码库，仅保留小请求筛选器，异步原样放行。12目标日志应有TARGET_REQUEST_OK，不解码响应、不去广告。
 #!author=ccyykk666[https://github.com/ccyykk666]
 #!date=2026-10-17
 #!system=iOS, iPadOS
@@ -7,9 +7,10 @@
 #!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/qqmusic/icon.png
 
 [Argument]
-Stage = select,0,1,2,3,4,5,6,7,8,9,10,11,type=number,tag=诊断阶段（0为基线；11选择性解码）
+Stage = select,0,1,2,3,4,5,6,7,8,9,10,11,12,type=number,tag=诊断阶段（0为基线；12移除响应库）
 
 [Script]
+response if ${Stage} == 12 && ${url} ~= /^https:\/\/(?:u6|szu6)\.y\.qq\.com\/cgi-bin\/musics\.fcg(?:\?[^#]*)?$/ && ${request.method} == "POST" && ${request.header['x-sign-data-type']} ~= /^json$/i && ${response.status} == 200 then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/qqmusic/qqmusic_request_guard_probe.js?v=diag-20261017-8") with tag="QQM-D12-RequestGuardOnly", timeout=5, requires_body=true, binary_body_mode=true
 response if ${Stage} == 11 && ${url} ~= /^https:\/\/(?:u6|szu6)\.y\.qq\.com\/cgi-bin\/musics\.fcg(?:\?[^#]*)?$/ && ${request.method} == "POST" && ${request.header['x-sign-data-type']} ~= /^json$/i && ${response.status} == 200 then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/qqmusic/qqmusic_selective_decode_probe.js?v=diag-20261017-7") with tag="QQM-D11-SelectiveResponseDecode", timeout=5, requires_body=true, binary_body_mode=true
 response if ${Stage} == 10 && ${url} ~= /^https:\/\/(?:u6|szu6)\.y\.qq\.com\/cgi-bin\/musics\.fcg(?:\?[^#]*)?$/ && ${request.method} == "POST" && ${request.header['x-sign-data-type']} ~= /^json$/i && ${response.status} == 200 then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/qqmusic/qqmusic_async_response_decode_probe.js?v=diag-20261017-6") with tag="QQM-D10-AsyncResponseDecode", timeout=5, requires_body=true, binary_body_mode=true
 response if ${Stage} == 9 && ${url} ~= /^https:\/\/(?:u6|szu6)\.y\.qq\.com\/cgi-bin\/musics\.fcg(?:\?[^#]*)?$/ && ${request.method} == "POST" && ${request.header['x-sign-data-type']} ~= /^json$/i && ${response.status} == 200 then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/qqmusic/qqmusic_async_noop_probe.js?v=diag-20261017-4") with tag="QQM-D9-AsyncResponseBodyNoop", timeout=5, requires_body=true, binary_body_mode=true

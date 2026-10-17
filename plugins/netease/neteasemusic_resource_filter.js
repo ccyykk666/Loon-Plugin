@@ -51,13 +51,6 @@ function filterGeneralizedObjects(resource) {
 function cleanSidebarResources(payload) {
   if (!payload.data) return false;
   let changes = 0;
-  const resources = payload.data.commonResourceList;
-  if (Array.isArray(resources) && resources.some((item) => item?.positionCode === "artistPageEntrance")) {
-    payload.data.commonResourceList = resources.filter((item) => item?.positionCode !== "artistPageEntrance");
-    if (Array.isArray(payload.trp?.rules))
-      payload.trp.rules = payload.trp.rules.filter((rule) => !String(rule).startsWith("artistPageEntrance::"));
-    changes += 1;
-  }
   const crossPosition = payload.data.crossPlatformResource?.positionCode;
   if (crossPosition === "MOMENT_MORE_RCMD_PAGE") {
     payload.data.crossPlatformResource = {};
@@ -113,8 +106,8 @@ try {
   const text = new TextDecoder().decode(bytes);
   if (!text.includes("\\u") &&
       !(SETTINGS.MineClean
-        ? /artistPageEntrance|MOMENT_MORE_RCMD_PAGE|MyPageBar|side_bar_new_/
-        : /artistPageEntrance|MOMENT_MORE_RCMD_PAGE/).test(text)) return $done({});
+        ? /MOMENT_MORE_RCMD_PAGE|MyPageBar|side_bar_new_/
+        : /MOMENT_MORE_RCMD_PAGE/).test(text)) return $done({});
   const payload = JSON.parse(text);
   if (!cleanSidebarResources(payload)) return $done({});
   return $done({ body: $crypto.aes.encrypt(encoder.encode(JSON.stringify(payload)), options).ciphertext });

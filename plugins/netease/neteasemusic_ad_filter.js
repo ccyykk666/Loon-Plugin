@@ -11,9 +11,9 @@ const SETTINGS = {
   TopBook: ARGUMENTS.TopBook ?? false,
   TopAI: ARGUMENTS.TopAI ?? false,
   MineClean: ARGUMENTS.MineClean ?? true,
-  NewArtistPage: ARGUMENTS.NewArtistPage ?? false,
   HomePageVersion: ARGUMENTS.HomePageVersion ?? "跟随服务端",
   SearchTabExperiment: ARGUMENTS.SearchTabExperiment ?? false,
+  SearchPageLayout: ARGUMENTS.SearchPageLayout ?? "不修改",
   ListenRankVersion: ARGUMENTS.ListenRankVersion ?? "不修改",
   PlayingListVersion: ARGUMENTS.PlayingListVersion ?? "不修改",
   PlayingListCover: ARGUMENTS.PlayingListCover ?? "不修改",
@@ -25,6 +25,9 @@ const SETTINGS = {
 };
 const HOME_EXPERIMENT = ["新版首页", "ARK 首页"].includes(SETTINGS.HomePageVersion);
 const USE_LEGACY_HOME = SETTINGS.HomePageVersion === "旧版首页";
+const SEARCH_PAGE_GROUP = {
+  "对照 c": "c", "实验 t1": "t1", "实验 t2": "t2", "底置搜索框 t3": "t3",
+}[SETTINGS.SearchPageLayout];
 const REQUEST_PATH = extractApiPath(globalThis.$request?.url ?? "");
 const RESPONSE_BYTES = globalThis.$response?.body;
 if (!REQUEST_PATH || !(RESPONSE_BYTES instanceof Uint8Array) || !RESPONSE_BYTES.length)
@@ -186,7 +189,10 @@ function clientExperimentOverrides() {
   for (const [name, choice, groups] of choices) {
     if (Object.prototype.hasOwnProperty.call(groups, choice)) overrides[name] = { group: groups[choice] };
   }
-  if (SETTINGS.NewArtistPage) overrides.Artisit_page_newV1 = { group: "t2" };
+  if (SEARCH_PAGE_GROUP) {
+    overrides.SearchTabIssue3_OldFramework = { group: SEARCH_PAGE_GROUP };
+    overrides.SearchTabIssue3_SearchTab_Is_the_SoleEntryPoint = { group: SEARCH_PAGE_GROUP };
+  }
   if (SETTINGS.HomePageVersion === "ARK 首页") overrides["hp-ark"] = { group: "t1" };
   if (SETTINGS.SearchTabExperiment) {
     overrides["2026newframe_searchtabtest_distribution"] = { group: "t1" };
@@ -535,7 +541,6 @@ const HANDLERS = {
   "/song/enhance/privilege": (payload) => cleanSongPrivileges(payload.data),
   "/song/enhance/player/url/v1": (payload) => cleanSongPrivileges(payload.data),
   "/v3/discovery/recommend/songs": cleanDailyRecommendation,
-  "/v1/artist/top/song": (payload) => cleanSongCollection(payload.songs, undefined, true),
   "/playmode/intelligence/list": (payload) =>
     Array.isArray(payload.data) && cleanSongCollection(payload.data.map((item) => item?.songInfo)),
   "/search/complex/page/v3": cleanSearchResults,
@@ -544,8 +549,6 @@ const HANDLERS = {
     if (typeof payload.data?.specJson !== "string" || !payload.data.specJson) return false;
     return replaceValue(payload, "data", {});
   },
-  "/community/artist/detail/dynamic": cleanArtistPromotions,
-  "/artist/detail/dynamic/v2": cleanArtistPromotions,
   "/homepage/scene/more/rcmd/song": (payload) => {
     const data = payload.data;
     if (!Array.isArray(data?.songList) || !data.songList.length) return false;
@@ -636,15 +639,6 @@ const HANDLERS = {
   "/link/page/rcmd/resource/show": cleanHomepageSongTags,
 };
 
-function cleanArtistPromotions(payload) {
-  const data = payload.data;
-  if (!Array.isArray(data?.resources)) return false;
-  if (!data.resources.length && data.valid === false) return false;
-  data.resources = [];
-  data.valid = false;
-  return true;
-}
-
 function cleanBatch(payload) {
   let changed = false;
   for (const path in payload) {
@@ -666,7 +660,7 @@ function hasCleaningTargets(path, text) {
     case "/experiment/group/batch/get":
       return text.includes("hy-hepaituijian");
     case "/rtrs/abt/front/expinfo/list":
-      return SETTINGS.NewArtistPage || SETTINGS.HomePageVersion === "ARK 首页" ||
+      return SEARCH_PAGE_GROUP || SETTINGS.HomePageVersion === "ARK 首页" ||
         SETTINGS.SearchTabExperiment || [
           SETTINGS.ListenRankVersion, SETTINGS.PlayingListVersion, SETTINGS.PlayingListCover,
           SETTINGS.PlayingListSwipeDelete, SETTINGS.SearchBestMatchVersion, SETTINGS.QualityPanelVersion,
@@ -708,7 +702,7 @@ function cleanCommentMomentRecommendation(payload) {
 
 function cleanBottomTabs(payload) {
   if (
-    !SETTINGS.BottomSimple || SETTINGS.SearchTabExperiment ||
+    !SETTINGS.BottomSimple || SETTINGS.SearchTabExperiment || SEARCH_PAGE_GROUP ||
     !Array.isArray(payload.data?.commonResourceList)
   )
     return false;

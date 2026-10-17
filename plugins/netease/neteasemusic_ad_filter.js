@@ -5,7 +5,6 @@ const ARGUMENTS = globalThis.$argument ?? {};
 
 const SETTINGS = {
   BottomSimple: ARGUMENTS.BottomSimple ?? true,
-  LegacyHomeFramework: ARGUMENTS.LegacyHomeFramework ?? true,
   TopRcmd: ARGUMENTS.TopRcmd ?? true,
   TopMusic: ARGUMENTS.TopMusic ?? true,
   TopPodcast: ARGUMENTS.TopPodcast ?? true,
@@ -13,7 +12,7 @@ const SETTINGS = {
   TopAI: ARGUMENTS.TopAI ?? false,
   MineClean: ARGUMENTS.MineClean ?? true,
   NewArtistPage: ARGUMENTS.NewArtistPage ?? false,
-  HomePageVersion: ARGUMENTS.HomePageVersion ?? "不修改",
+  HomePageVersion: ARGUMENTS.HomePageVersion ?? "跟随服务端",
   SearchTabExperiment: ARGUMENTS.SearchTabExperiment ?? false,
   ListenRankVersion: ARGUMENTS.ListenRankVersion ?? "不修改",
   PlayingListVersion: ARGUMENTS.PlayingListVersion ?? "不修改",
@@ -25,7 +24,7 @@ const SETTINGS = {
   AudioBookHeaderVersion: ARGUMENTS.AudioBookHeaderVersion ?? "不修改",
 };
 const HOME_EXPERIMENT = ["新版首页", "ARK 首页"].includes(SETTINGS.HomePageVersion);
-const USE_LEGACY_HOME = SETTINGS.LegacyHomeFramework && !HOME_EXPERIMENT && !SETTINGS.SearchTabExperiment;
+const USE_LEGACY_HOME = SETTINGS.HomePageVersion === "旧版首页";
 const REQUEST_PATH = extractApiPath(globalThis.$request?.url ?? "");
 const RESPONSE_BYTES = globalThis.$response?.body;
 if (!REQUEST_PATH || !(RESPONSE_BYTES instanceof Uint8Array) || !RESPONSE_BYTES.length)

@@ -1,5 +1,5 @@
 #!name=QQ音乐网络诊断
-#!desc=诊断v5。0仅MITM；1请求头，2请求正文，3请求解压，4响应正文，5响应解压；6请求头同步放行，7响应头同步放行，8响应头异步放行，9完整二进制响应异步放行。均保留原数据。
+#!desc=诊断v6。0仅MITM；1至7为原对照；8响应头异步放行，9完整响应异步放行，10响应解压解析后异步放行。均保留原数据，不去广告。10需核对脚本日志的DECODE_OK/ERROR。
 #!author=ccyykk666[https://github.com/ccyykk666]
 #!date=2026-10-17
 #!system=iOS, iPadOS
@@ -7,9 +7,10 @@
 #!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/qqmusic/icon.png
 
 [Argument]
-Stage = select,0,1,2,3,4,5,6,7,8,9,type=number,tag=诊断阶段（0为基线；9仅验证正文缓冲）
+Stage = select,0,1,2,3,4,5,6,7,8,9,10,type=number,tag=诊断阶段（0为基线；10只解压解析）
 
 [Script]
+response if ${Stage} == 10 && ${url} ~= /^https:\/\/(?:u6|szu6)\.y\.qq\.com\/cgi-bin\/musics\.fcg(?:\?[^#]*)?$/ && ${request.method} == "POST" && ${request.header['x-sign-data-type']} ~= /^json$/i && ${response.status} == 200 then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/qqmusic/qqmusic_async_response_decode_probe.js?v=diag-20261017-6") with tag="QQM-D10-AsyncResponseDecode", timeout=5, requires_body=true, binary_body_mode=true
 response if ${Stage} == 9 && ${url} ~= /^https:\/\/(?:u6|szu6)\.y\.qq\.com\/cgi-bin\/musics\.fcg(?:\?[^#]*)?$/ && ${request.method} == "POST" && ${request.header['x-sign-data-type']} ~= /^json$/i && ${response.status} == 200 then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/qqmusic/qqmusic_async_noop_probe.js?v=diag-20261017-4") with tag="QQM-D9-AsyncResponseBodyNoop", timeout=5, requires_body=true, binary_body_mode=true
 response if ${Stage} == 8 && ${url} ~= /^https:\/\/(?:u6|szu6)\.y\.qq\.com\/cgi-bin\/musics\.fcg(?:\?[^#]*)?$/ && ${request.method} == "POST" && ${request.header['x-sign-data-type']} ~= /^json$/i && ${response.status} == 200 then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/qqmusic/qqmusic_async_noop_probe.js?v=diag-20261017-4") with tag="QQM-D8-AsyncResponseHeaderNoop", timeout=5
 response if ${Stage} == 7 && ${url} ~= /^https:\/\/(?:u6|szu6)\.y\.qq\.com\/cgi-bin\/musics\.fcg(?:\?[^#]*)?$/ && ${request.method} == "POST" && ${request.header['x-sign-data-type']} ~= /^json$/i && ${response.status} == 200 then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/qqmusic/qqmusic_noop_probe.js?v=diag-20261017-2") with tag="QQM-D7-ResponseHeaderNoop", timeout=5

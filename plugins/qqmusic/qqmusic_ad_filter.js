@@ -280,6 +280,7 @@ var QQMusicCodec=(()=>{var te=Object.defineProperty;var Mt=Object.getOwnProperty
       "music.venus.VenusMusicAiSongCoversApi.HandleGetPlayPageIcon": "ai",
       "music.iotSmartDevice.IotSmartDeviceSvr.GetEntry": "iot",
       "music.opsBase.EntranceSvr.GetMyTabEntranceInfos": "cash",
+      "music.longRadio.LongRadioOperationBannerSvr.GetRecShelfVipBanner": "audiobook",
     };
     let requestTargets = null;
     if (request.body instanceof Uint8Array && request.body.length <= 4194304) {
@@ -320,6 +321,7 @@ var QQMusicCodec=(()=>{var te=Object.defineProperty;var Mt=Object.getOwnProperty
         else if (/^QMGetAISingInfoCgi\d+$/.test(key)) kind = "ai";
         else if (/^QMIotSmartDeviceInfoCgi\d+$/.test(key)) kind = "iot";
         else if (/^QMMyTabV5GetEntraceInfosCgi\d+$/.test(key)) kind = "cash";
+        else if (/^QMChannelLongTrackBannerCgi\d+$/.test(key)) kind = "audiobook";
       }
       const item = payload[key];
       if (!kind || item?.code !== 0 || !item.data || typeof item.data !== "object") continue;
@@ -341,6 +343,9 @@ var QQMusicCodec=(()=>{var te=Object.defineProperty;var Mt=Object.getOwnProperty
         }
       } else if (kind === "iot" && data.hasEntry === true) {
         data.hasEntry = false;
+        changed = true;
+      } else if (kind === "audiobook" && data.banner && typeof data.banner === "object") {
+        data.banner = null;
         changed = true;
       } else if (kind === "cash" && cashEnabled === true &&
                  data.topRightInfo?.entranceId === "Z2liNQ5_2h5ufH") {

@@ -13,7 +13,6 @@
 | 大学搜题酱 | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/daxuesoutijiang/Daxuesoutijiang_remove_ads.lpx) |
 | 超级课程表 | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/myfriday/MyFriday_remove_ads.plugin) |
 | 网易云音乐 | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/netease/neteasemusic_ad.lpx) |
-| QQ音乐 | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/qqmusic/qqmusic_ad.lpx) |
 | 云闪付 | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/unionpay/UnionPayCloudPay.lpx) |
 | 微博轻享版 | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/weibo/weibo_ad.lpx) |
 | YouTube | [安装](https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/youtube/youtube_ad.lpx) |

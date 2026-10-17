@@ -14,10 +14,10 @@ TopPodcast = switch,true,tag=[顶栏] 播客
 TopBook = switch,false,tag=[顶栏] 听书
 TopAI = switch,false,tag=[顶栏] AI 写歌
 BottomSimple = switch,true,tag=[底栏] 精简底栏
-SearchTabExperiment = switch,false,tag=[底栏] 新版底栏,desc=尝试搜索入口云控，启用时保留服务端底栏，不执行精简底栏。入口仍需服务端下发，不保证生效。
+SearchTabExperiment = switch,false,tag=[底栏] 新版底栏
 
 MineClean = switch,true,tag=[我的] 页面与侧栏净化
-SearchBoxAtBottom = switch,false,tag=[搜索] 搜索框置底,desc=启用时将两组 SearchTabIssue3 实验设为 t3，由客户端按顶栏类型取用。保留服务端底栏，可配合新版底栏使用；入口仍需服务端下发。修改后重启应用并重新获取配置，关闭仅停止覆盖。
+SearchBoxAtBottom = switch,false,tag=[搜索] 搜索框置底
 
 [Rule]
 DOMAIN, iadmat.nosdn.127.net, REJECT

@@ -4,6 +4,7 @@
 const ARGUMENTS = globalThis.$argument ?? {};
 
 const SETTINGS = {
+  LegacyHomeFramework: ARGUMENTS.LegacyHomeFramework ?? false,
   BottomSimple: ARGUMENTS.BottomSimple ?? true,
   TopRcmd: ARGUMENTS.TopRcmd ?? true,
   TopMusic: ARGUMENTS.TopMusic ?? true,
@@ -11,21 +12,9 @@ const SETTINGS = {
   TopBook: ARGUMENTS.TopBook ?? false,
   TopAI: ARGUMENTS.TopAI ?? false,
   MineClean: ARGUMENTS.MineClean ?? true,
-  HomePageVersion: ARGUMENTS.HomePageVersion ?? "跟随服务端",
-  HomeTopLayout: ARGUMENTS.HomeTopLayout ?? "不修改",
   SearchTabExperiment: ARGUMENTS.SearchTabExperiment ?? false,
   SearchPageLayout: ARGUMENTS.SearchPageLayout ?? "不修改",
-  ListenRankVersion: ARGUMENTS.ListenRankVersion ?? "不修改",
-  PlayingListVersion: ARGUMENTS.PlayingListVersion ?? "不修改",
-  PlayingListCover: ARGUMENTS.PlayingListCover ?? "不修改",
-  PlayingListSwipeDelete: ARGUMENTS.PlayingListSwipeDelete ?? "不修改",
-  SearchBestMatchVersion: ARGUMENTS.SearchBestMatchVersion ?? "不修改",
-  QualityPanelVersion: ARGUMENTS.QualityPanelVersion ?? "不修改",
-  EffectPageVersion: ARGUMENTS.EffectPageVersion ?? "不修改",
-  AudioBookHeaderVersion: ARGUMENTS.AudioBookHeaderVersion ?? "不修改",
 };
-const HOME_EXPERIMENT = ["新版首页", "ARK 首页"].includes(SETTINGS.HomePageVersion);
-const USE_LEGACY_HOME = SETTINGS.HomePageVersion === "旧版首页";
 const SEARCH_PAGE_GROUP = {
   "对照 c": "c", "实验 t1": "t1", "实验 t2": "t2", "底置搜索框 t3": "t3",
 }[SETTINGS.SearchPageLayout];
@@ -177,24 +166,10 @@ function cleanClientExperiments(payload) {
 
 function clientExperimentOverrides() {
   const overrides = {};
-  const choices = [
-    ["minepage_ranklist0422", SETTINGS.ListenRankVersion, { "原生": "c", "RN": "t1" }],
-    ["bofangliebiaozuizhong", SETTINGS.PlayingListVersion, { "旧版": "c", "新版": "t1" }],
-    ["fengmianshiyan", SETTINGS.PlayingListCover, { "隐藏": "c", "显示": "t1" }],
-    ["caozuoanniu", SETTINGS.PlayingListSwipeDelete, { "关闭": "c", "开启": "t1" }],
-    ["SearchBestmatchOptimize", SETTINGS.SearchBestMatchVersion, { "旧版": "c", "新版": "t1", "新版横滑": "t2" }],
-    ["hy-yinzhifuceng", SETTINGS.QualityPanelVersion, { "原生": "c", "RN": "t1" }],
-    ["hy-yxgaiban", SETTINGS.EffectPageVersion, { "旧版": "c", "新版": "t1" }],
-    ["audio-list", SETTINGS.AudioBookHeaderVersion, { "原生": "c", "RN": "t1" }],
-  ];
-  for (const [name, choice, groups] of choices) {
-    if (Object.prototype.hasOwnProperty.call(groups, choice)) overrides[name] = { group: groups[choice] };
-  }
   if (SEARCH_PAGE_GROUP) {
     overrides.SearchTabIssue3_OldFramework = { group: SEARCH_PAGE_GROUP };
     overrides.SearchTabIssue3_SearchTab_Is_the_SoleEntryPoint = { group: SEARCH_PAGE_GROUP };
   }
-  if (SETTINGS.HomePageVersion === "ARK 首页") overrides["hp-ark"] = { group: "t1" };
   if (SETTINGS.SearchTabExperiment) {
     overrides["2026newframe_searchtabtest_distribution"] = { group: "t1" };
     overrides["2026newframe_listenidentifyandsearchtab_0126"] = {
@@ -264,8 +239,7 @@ function cleanWebExperiments(payload) {
     payload.data.push({ expName: "SearchLabel", expGroupName: "t1" });
     changed = true;
   }
-  const group = { "旧版": "c", "新版": "t1", "新版横滑": "t2" }[SETTINGS.SearchBestMatchVersion];
-  return (group ? applyExperimentOverrides(payload, { SearchBestmatchOptimize: { group } }) : false) || changed;
+  return changed;
 }
 
 function cleanSongQuality(privilege) {
@@ -661,12 +635,7 @@ function hasCleaningTargets(path, text) {
     case "/experiment/group/batch/get":
       return text.includes("hy-hepaituijian");
     case "/rtrs/abt/front/expinfo/list":
-      return SEARCH_PAGE_GROUP || SETTINGS.HomePageVersion === "ARK 首页" ||
-        SETTINGS.SearchTabExperiment || [
-          SETTINGS.ListenRankVersion, SETTINGS.PlayingListVersion, SETTINGS.PlayingListCover,
-          SETTINGS.PlayingListSwipeDelete, SETTINGS.SearchBestMatchVersion, SETTINGS.QualityPanelVersion,
-          SETTINGS.EffectPageVersion, SETTINGS.AudioBookHeaderVersion,
-        ].some((choice) => choice !== "不修改") ||
+      return SEARCH_PAGE_GROUP || SETTINGS.SearchTabExperiment ||
         /lyrics_addcomment|New_Agent_Entry_Added_for_Search/.test(text);
     case "/link/scene/show/resource":
     case "/link/scene/show/resource/scene-code/player":
@@ -722,23 +691,13 @@ function cleanBottomTabs(payload) {
 }
 
 function cleanHomeFramework(payload) {
-  let changed = false;
-  if (HOME_EXPERIMENT && typeof payload.data?.homeFrameworkType === "string") {
-    changed = replaceValue(payload.data, "homeFrameworkType", "fastPlay");
-    changed = replaceValue(payload.data, "selectedHomeTopTabCode",
-      SETTINGS.HomeTopLayout === "两项" ? "rcmd" : "fastPlay") || changed;
-  } else if (USE_LEGACY_HOME && payload.data?.homeFrameworkType === "fastPlay") {
-    payload.data.homeFrameworkType = "normal";
-    if (payload.data.selectedHomeTopTabCode === "fastPlay")
-      payload.data.selectedHomeTopTabCode = "rcmd";
-    payload.data.haveShowFastPlayGuide = false;
-    changed = true;
-  }
-  if (SETTINGS.HomeTopLayout === "两项" && payload.data?.selectedHomeTopTabCode === "fastPlay") {
+  if (!SETTINGS.LegacyHomeFramework || payload.data?.homeFrameworkType !== "fastPlay")
+    return false;
+  payload.data.homeFrameworkType = "normal";
+  if (payload.data.selectedHomeTopTabCode === "fastPlay")
     payload.data.selectedHomeTopTabCode = "rcmd";
-    changed = true;
-  }
-  return changed;
+  payload.data.haveShowFastPlayGuide = false;
+  return true;
 }
 
 function cleanSearchDefaultKeyword(payload) {
@@ -764,13 +723,9 @@ function cleanSearchDefaultKeyword(payload) {
 function cleanTopTabs(payload) {
   if (!Array.isArray(payload.data?.commonResourceList)) return false;
   const original = payload.data.commonResourceList;
-  const compactCodes = SETTINGS.HomeTopLayout === "两项" ? ["rcmd", "music"] :
-    SETTINGS.HomeTopLayout === "三项" ? ["fastPlay", "rcmd", "music"] : null;
 
-  const result = compactCodes ? compactCodes.map((code) => original.find((tab) =>
-    tab?.resCode === code && (code !== "fastPlay" || !USE_LEGACY_HOME),
-  )).filter(Boolean) : original.filter((tab) => {
-    if (tab?.resCode === "fastPlay") return !USE_LEGACY_HOME;
+  const result = original.filter((tab) => {
+    if (tab?.resCode === "fastPlay") return !SETTINGS.LegacyHomeFramework;
     const setting = TOP_TAB_SETTING_BY_CODE[tab?.resCode];
     return Boolean(setting && SETTINGS[setting]);
   });
@@ -785,10 +740,6 @@ function cleanTopTabs(payload) {
     result.length !== original.length ||
     result.some((tab, index) => tab !== original[index]);
   payload.data.commonResourceList = result;
-  if (compactCodes && result.length) {
-    changed = replaceValue(payload.data, "topTabNumType", "fewTab") || changed;
-    changed = replaceValue(payload.data, "topTabStyle", "tab_try_center") || changed;
-  }
 
   if (Array.isArray(payload.trp?.rules) && payload.trp.rules.length) {
     const allowedTopTabIds = new Set(result.map((tab) => tab?.trp_id).filter(Boolean));

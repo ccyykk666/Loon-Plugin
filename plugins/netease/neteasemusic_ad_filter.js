@@ -260,13 +260,12 @@ function cleanSongQuality(privilege) {
   return changed;
 }
 
-function cleanArtistSongQuality(payload) {
+function cleanArtistPageSongs(payload) {
   if (!Array.isArray(payload.data?.modules)) return false;
   let changed = false;
   for (const module of payload.data.modules) {
     if (module?.blockCode !== "ARTIST_SONGS") continue;
-    for (const song of module.resource?.songData?.songs ?? [])
-      changed = cleanSongQuality(song?.privilege) || changed;
+    changed = cleanSongCollection(module.resource?.songData?.songs, undefined, true) || changed;
   }
   return changed;
 }
@@ -505,7 +504,8 @@ function cleanCommentList(data) {
 }
 
 const HANDLERS = {
-  "/personal/home/page/artist/v2": cleanArtistSongQuality,
+  "/personal/home/page/artist/v2": cleanArtistPageSongs,
+  "/v3/artist/songs": (payload) => cleanSongCollection(payload.songs, payload.privileges, true),
   "/community/artist/home/listTabs": (payload) => {
     if (!Array.isArray(payload.data)) return false;
     const tabs = payload.data.filter((tab) => tab?.code !== "FANS_EVENT");
@@ -527,6 +527,7 @@ const HANDLERS = {
   "/v6/playlist/detail": cleanPlaylistDetail,
   "/chart/playlist/detail": cleanPlaylistDetail,
   "/playlist/privilege": (payload) => cleanSongPrivileges(payload.data, true),
+  "/album/privilege": (payload) => cleanSongPrivileges(payload.data, true),
   "/song/mix/detail": (payload) =>
     cleanSongCollection(payload.songs, payload.privileges, true),
   "/song/or/podcast/detail": (payload) =>

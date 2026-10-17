@@ -523,7 +523,7 @@ const HANDLERS = {
   "/song/play/more/list/v2": cleanPlayMoreItems,
   "/mine/rn/resource/list": cleanMinePublishButton,
   "/mine/rn/header/info/get": cleanMinePublishButton,
-  "/v3/song/detail": (payload) => cleanSongCollection(payload.songs, payload.privileges),
+  "/v3/song/detail": (payload) => cleanSongCollection(payload.songs, payload.privileges, true),
   "/v6/playlist/detail": cleanPlaylistDetail,
   "/chart/playlist/detail": cleanPlaylistDetail,
   "/playlist/privilege": (payload) => cleanSongPrivileges(payload.data, true),
@@ -532,8 +532,8 @@ const HANDLERS = {
     cleanSongCollection(payload.songs, payload.privileges, true),
   "/song/or/podcast/detail": (payload) =>
     cleanSongCollection(payload.data?.songs, payload.data?.privileges, true),
-  "/song/enhance/privilege": (payload) => cleanSongPrivileges(payload.data),
-  "/song/enhance/player/url/v1": (payload) => cleanSongPrivileges(payload.data),
+  "/song/enhance/privilege": (payload) => cleanSongPrivileges(payload.data, true),
+  "/song/enhance/player/url/v1": (payload) => cleanSongPrivileges(payload.data, true),
   "/v3/discovery/recommend/songs": cleanDailyRecommendation,
   "/playmode/intelligence/list": (payload) =>
     Array.isArray(payload.data) && cleanSongCollection(payload.data.map((item) => item?.songInfo)),

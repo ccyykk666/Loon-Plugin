@@ -393,7 +393,7 @@ function cleanPlayMoreItems(payload) {
   }
   const lists = data.bottomItem?.itemNodeList;
   if (!Array.isArray(lists)) return changed;
-  const hiddenKeys = new Set(["magent", "similarFm", "recommendSong", "redAnimeGuide", "ring", "giftCard"]);
+  const hiddenKeys = new Set(["magent", "redAnimeGuide", "ring", "giftCard"]);
   for (let index = lists.length - 1; index >= 0; index -= 1) {
     if (!Array.isArray(lists[index])) continue;
     const items = lists[index].filter((item) =>

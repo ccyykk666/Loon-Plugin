@@ -80,6 +80,7 @@ function cleanPlayerHints(payload) {
     "musicianTalk",
     "artistFollow",
     "PlayerAgentButtonRedDotView",
+    "PlayerShareView",
   ]);
   const PLAYER_PROMO_POSITIONS = new Set([
     "player_vinyl_float_guide",
@@ -658,7 +659,7 @@ function hasCleaningTargets(path, text) {
         /lyrics_addcomment|New_Agent_Entry_Added_for_Search/.test(text);
     case "/link/scene/show/resource":
     case "/link/scene/show/resource/scene-code/player":
-      return /NMHintMVSwitchView|FastPlayRecReasonBubbleView|musicianTalk|artistFollow|PlayerAgentButtonRedDotView|player_vinyl_float_guide|player_bottom_toast|player_bottom_left|fast_player_middle_left_toast|player_global_bubble|vinyl_comment_entrance|playlist_detail_top_banner|heijiao_dj_wiki_pop_channel|UgcVideoChange/i.test(text);
+      return /NMHintMVSwitchView|FastPlayRecReasonBubbleView|musicianTalk|artistFollow|PlayerAgentButtonRedDotView|PlayerShareView|player_vinyl_float_guide|player_bottom_toast|player_bottom_left|fast_player_middle_left_toast|player_global_bubble|vinyl_comment_entrance|playlist_detail_top_banner|heijiao_dj_wiki_pop_channel|UgcVideoChange/i.test(text);
     default:
       return true;
   }

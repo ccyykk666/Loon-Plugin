@@ -31,7 +31,6 @@
     HideTopNearby: false,
     HideTopAI: false,
     HideTopEnterprise: false,
-    HideBottomAI: true,
     MineClean: true
   };
 
@@ -50,15 +49,8 @@
     !enabled("HideTopPhone") &&
     !enabled("HideTopNearby") &&
     !enabled("HideTopAI") &&
-    !enabled("HideTopEnterprise") &&
-    !enabled("HideBottomAI")
+    !enabled("HideTopEnterprise")
   ) {
-    $done({});
-    return;
-  }
-
-  var isBottomNavigationRequest = /\/DN\/bottomNavigationService\/getNavigationInfo(?:\?|$)/.test(url);
-  if (isBottomNavigationRequest && !enabled("HideBottomAI")) {
     $done({});
     return;
   }
@@ -479,15 +471,6 @@
     return false;
   }
 
-  function filterBottomNavigation(config) {
-    if (!config || !Array.isArray(config.navigationList)) return false;
-    var before = config.navigationList.length;
-    config.navigationList = config.navigationList.filter(function (tab) {
-      return String(tab && tab.navigationId) !== "qw2305190519";
-    });
-    return config.navigationList.length !== before;
-  }
-
   function filterNavigation(payload) {
     var body = payload && payload.rspBody;
     if (!body) return false;
@@ -500,15 +483,6 @@
         return !shouldHideTopTab(tab);
       });
       if (body.labelList.topTabList.length !== topCount) changed = true;
-    }
-
-    if (enabled("HideBottomAI")) {
-      if (filterBottomNavigation(body.bnavigationService)) changed = true;
-      if (Array.isArray(body.configProvinceList)) {
-        body.configProvinceList.forEach(function (config) {
-          if (filterBottomNavigation(config)) changed = true;
-        });
-      }
     }
 
     return changed;
@@ -865,7 +839,7 @@
       changed = filterMyPage(payload);
     } else if (/\/DN\/multipleInterfaces\/aggregationData(?:\?|$)/.test(url)) {
       changed = filterAggregationData(payload);
-    } else if (isNavigationRequest || isBottomNavigationRequest) {
+    } else if (/\/DN\/init\/getNavigation(?:\?|$)/.test(url)) {
       changed = filterNavigation(payload);
     } else if (/\/DN\/searchWord\/getSearchWordInfo(?:\?|$)/.test(url)) {
       changed = filterSearchWords(payload);

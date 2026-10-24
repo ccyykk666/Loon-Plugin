@@ -168,7 +168,7 @@ function clientExperimentOverrides() {
     overrides["2026newframe_listenidentifyandsearchtab_0126"] = {
       group: "t1",
       config: {
-        showVoiceRec: false, fixSearchTab: !SETTINGS.BottomSimple, searchTabJump: true,
+        showVoiceRec: false, fixSearchTab: true, searchTabJump: true,
         showTip: false, showSearchButton: true, bottomTabFixIcon: true,
       },
     };
@@ -697,7 +697,7 @@ function cleanBottomTabs(payload) {
   )
     return false;
   const filtered = payload.data.commonResourceList.filter(
-    (tab) => ["main", "mine"].includes(tab?.resourceType),
+    (tab) => ["main", "search", "mine"].includes(tab?.resourceType),
   );
   if (filtered.length < 2) return false;
   let changed = filtered.length !== payload.data.commonResourceList.length;

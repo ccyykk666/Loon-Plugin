@@ -114,7 +114,9 @@
   }
 
   function utf8Decode(bytes) {
-    var text = "";
+    var chunks = [];
+    var codes = new Array(8192);
+    var output = 0;
     for (var i = 0; i < bytes.length;) {
       var first = bytes[i++];
       var code;
@@ -131,13 +133,19 @@
           (bytes[i++] & 0x3f);
       }
       if (code <= 0xffff) {
-        text += String.fromCharCode(code);
+        codes[output++] = code;
       } else {
         code -= 0x10000;
-        text += String.fromCharCode(0xd800 | (code >> 10), 0xdc00 | (code & 0x3ff));
+        codes[output++] = 0xd800 | (code >> 10);
+        codes[output++] = 0xdc00 | (code & 0x3ff);
+      }
+      if (output >= 8190) {
+        chunks.push(String.fromCharCode.apply(null, codes.slice(0, output)));
+        output = 0;
       }
     }
-    return text;
+    if (output) chunks.push(String.fromCharCode.apply(null, codes.slice(0, output)));
+    return chunks.join("");
   }
 
   var BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";

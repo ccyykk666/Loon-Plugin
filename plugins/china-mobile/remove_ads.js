@@ -31,7 +31,7 @@
     HideTopNearby: false,
     HideTopAI: false,
     HideTopEnterprise: false,
-    HideBottomAI: true,
+    BottomClean: true,
     MineClean: true
   };
 
@@ -51,14 +51,14 @@
     !enabled("HideTopNearby") &&
     !enabled("HideTopAI") &&
     !enabled("HideTopEnterprise") &&
-    !enabled("HideBottomAI")
+    !enabled("BottomClean")
   ) {
     $done({});
     return;
   }
 
   var isBottomNavigationRequest = /\/DN\/bottomNavigationService\/getNavigationInfo(?:\?|$)/.test(url);
-  if (isBottomNavigationRequest && !enabled("HideBottomAI")) {
+  if (isBottomNavigationRequest && !enabled("BottomClean")) {
     $done({});
     return;
   }
@@ -509,7 +509,7 @@
       if (body.labelList.topTabList.length !== topCount) changed = true;
     }
 
-    if (enabled("HideBottomAI")) {
+    if (enabled("BottomClean")) {
       if (disableBottomLingxi(body.bnavigationService)) changed = true;
       if (Array.isArray(body.configProvinceList)) {
         body.configProvinceList.forEach(function (config) {

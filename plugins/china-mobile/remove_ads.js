@@ -31,6 +31,7 @@
     HideTopNearby: false,
     HideTopAI: false,
     HideTopEnterprise: false,
+    HideBottomAI: true,
     MineClean: true
   };
 
@@ -49,8 +50,15 @@
     !enabled("HideTopPhone") &&
     !enabled("HideTopNearby") &&
     !enabled("HideTopAI") &&
-    !enabled("HideTopEnterprise")
+    !enabled("HideTopEnterprise") &&
+    !enabled("HideBottomAI")
   ) {
+    $done({});
+    return;
+  }
+
+  var isBottomNavigationRequest = /\/DN\/bottomNavigationService\/getNavigationInfo(?:\?|$)/.test(url);
+  if (isBottomNavigationRequest && !enabled("HideBottomAI")) {
     $done({});
     return;
   }
@@ -471,6 +479,22 @@
     return false;
   }
 
+  function disableBottomLingxi(config) {
+    if (!config || !Array.isArray(config.navigationList)) return false;
+    var changed = false;
+    config.navigationList.forEach(function (tab) {
+      if (
+        String(tab && tab.navigationId) === "qw2305190519" &&
+        String(tab.iconType) === "6" &&
+        String(tab.lingxiFlag) === "1"
+      ) {
+        tab.lingxiFlag = "0";
+        changed = true;
+      }
+    });
+    return changed;
+  }
+
   function filterNavigation(payload) {
     var body = payload && payload.rspBody;
     if (!body) return false;
@@ -483,6 +507,15 @@
         return !shouldHideTopTab(tab);
       });
       if (body.labelList.topTabList.length !== topCount) changed = true;
+    }
+
+    if (enabled("HideBottomAI")) {
+      if (disableBottomLingxi(body.bnavigationService)) changed = true;
+      if (Array.isArray(body.configProvinceList)) {
+        body.configProvinceList.forEach(function (config) {
+          if (disableBottomLingxi(config)) changed = true;
+        });
+      }
     }
 
     return changed;
@@ -839,7 +872,7 @@
       changed = filterMyPage(payload);
     } else if (/\/DN\/multipleInterfaces\/aggregationData(?:\?|$)/.test(url)) {
       changed = filterAggregationData(payload);
-    } else if (/\/DN\/init\/getNavigation(?:\?|$)/.test(url)) {
+    } else if (isNavigationRequest || isBottomNavigationRequest) {
       changed = filterNavigation(payload);
     } else if (/\/DN\/searchWord\/getSearchWordInfo(?:\?|$)/.test(url)) {
       changed = filterSearchWords(payload);

@@ -286,6 +286,9 @@ if (!$response.body) {
     const data = obj?.commonBaseInfo?.data;
     if (data?.liveInfo) delete data.liveInfo;
     if (data?.floatingAssistant) delete data.floatingAssistant;
+    if (data?.asynContext && Object.prototype.hasOwnProperty.call(data.asynContext, "avoidLive")) {
+      data.asynContext.avoidLive = true;
+    }
     if (data) {
       if (Object.prototype.hasOwnProperty.call(data, "aigcFlag")) {
         data.aigcFlag = false;

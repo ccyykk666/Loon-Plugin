@@ -82,8 +82,8 @@
     cells.forEach(function (cell) {
       if (!cell || cell.cellType !== 'vventranceA' || !Array.isArray(cell.itemList)) return;
       cell.itemList.forEach(function (page) {
-        if (!page || !Array.isArray(page.itemList)) return;
-        page.itemList.forEach(function (item) {
+        if (!page) return;
+        (Array.isArray(page.itemList) ? page.itemList : [page]).forEach(function (item) {
           if (!item || (item.type !== 'vventranceItemFirst_1062' &&
               item.type !== 'vventranceItemSecond_1062')) return;
           delete item.tagText;
@@ -144,10 +144,11 @@
     if (/^https:\/\/quic-tcmapi\.elong\.com\/hotel\/getNewMainFlowV2(?:\?.*)?$/.test($request.url)) {
       return cleanHotel();
     }
-    var route = /^https:\/\/tcmobileapi\.17usoft\.com\/(userextend\/member\/myIndex\/v3|apptravel\/travel\/list|appindexnew\/index\/(?:getindexlayoutcelllist|getindexlayoutconfig|getsearchboxtext))(?:\?.*)?$/.exec($request.url);
+    var route = /^https:\/\/tcmobileapi\.17usoft\.com\/(userextend\/member\/myIndex\/v[34]|apptravel\/travel\/list|appindexnew\/index\/(?:getindexlayoutcelllist|getindexlayoutconfig|getsearchboxtext))(?:\?.*)?$/.exec($request.url);
     if (!route) return {};
     var routes = {
       'userextend/member/myIndex/v3': 'mine',
+      'userextend/member/myIndex/v4': 'mine',
       'apptravel/travel/list': 'trip',
       'appindexnew/index/getindexlayoutcelllist': 'home',
       'appindexnew/index/getindexlayoutconfig': 'navigation',
@@ -208,9 +209,15 @@
           changes++;
           return false;
         }
-        if (cell && cell.cellType === 'vbMemberH3' &&
+        if (cell && (cell.cellType === 'vbMemberH3' || cell.cellType === 'vbMemberV4') &&
             Object.prototype.hasOwnProperty.call(cell, 'blackWhale')) {
           delete cell.blackWhale;
+          changes++;
+        }
+        if (cell && cell.cellType === 'vbMemberV4' &&
+            Object.prototype.hasOwnProperty.call(cell, 'tip')) {
+          delete cell.tip;
+          delete cell.showTip;
           changes++;
         }
         if (cell && cell.cellType === 'vbOrderV3' && cell.order &&

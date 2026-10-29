@@ -1,0 +1,13 @@
+#!name=铁路12306去广告
+#!desc=移除铁路12306广告
+#!author=ccyykk666[https://github.com/ccyykk666]
+#!date=2026-10-29
+#!system=iOS, iPadOS
+#!loon_version=3.5.1(978)
+#!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/12306/icon.jpg
+
+[Rewrite]
+response if ${url} ~= /^https:\/\/ad\.12306\.cn\/ad\/ser\/getAdList(?:\?.*)?$/ && ${response.status} == 200 then response.json.jq("if (.materialsList|type)==\"array\" then .materialsList=[] else . end")
+
+[Mitm]
+hostname = ad.12306.cn

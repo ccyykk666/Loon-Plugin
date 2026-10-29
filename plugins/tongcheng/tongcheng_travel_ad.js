@@ -205,7 +205,8 @@
       if (!Array.isArray(body.cellList)) return {};
       var cells = body.cellList.filter(function (cell) {
         if (cell && (cell.cellType === 'vbNewLoginCustomerWelfareV3' ||
-            cell.cellType === 'vbWalletV3' || cell.cellType === 'vbNewActivityV2')) {
+            cell.cellType === 'vbWalletV3' || cell.cellType === 'vbNewActivityV2' ||
+            cell.cellType === 'vbMessage')) {
           changes++;
           return false;
         }

@@ -12,9 +12,12 @@ OrderAds=switch, true, tag=订单页净化
 ProfileClean=switch, true, tag=我的页净化
 ProductClean=switch, true, tag=商品页净化
 
+[Rule]
+AND, ((DOMAIN, api.m.jd.com), (PROTOCOL, TCP)), REJECT-NO-DROP
+
 [Rewrite]
 request if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=wareBusiness(?:&|$)/i then request.header.set("Accept-Encoding", "gzip, deflate, br") | request.header.del("Available-Dictionary")
-response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?functionId=basicConfig/ then response.json.replace("data.JDMessage.socketmonitor.isSocketEstablishedAhead", 0) | response.json.replace("data.JDMessage.socketmonitor.isSocketReport", 0)
+response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?functionId=basicConfig/ then response.json.replace("data.JDMessage.socketmonitor.isSocketEstablishedAhead", 0) | response.json.replace("data.JDMessage.socketmonitor.isSocketReport", 0) | response.json.replace("data.JDHttpToolKit.httpdns.httpdns", 0)
 response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?(?:[^#]*&)?functionId=getBubbleInfo(?:&|$)/ then response.json.jq(".result |= map(select(.position != \"find\" and .extraMap.tab != \"Promotion\")) | if (.result | length) == 0 then .islandConfig = false else . end")
 response if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?functionId=cart/ then response.json.delete("cartLocationMap.loc_emptyCartFloor2") | response.json.delete("emptyCartRecommendFloor")
 request if ${url} ~= /^https:\/\/api\.m\.jd\.com\/client\.action\?functionId=(?:cartCouponRecommendGoods|intelligentRecommendSku|stationPullService)(?:&|$)/ then reject_dict(200)

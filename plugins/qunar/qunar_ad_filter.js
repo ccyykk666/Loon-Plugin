@@ -230,7 +230,6 @@ SOFTWARE.
     const data = object && object.data;
     if (!data || typeof data !== "object") return false;
     if (object.bstatus && object.bstatus.code !== 0) return false;
-    // This endpoint returns the ranking tabs directly as data, not a data object.
     if (qrt === "innovation_rankinglist_head") {
       if (!Array.isArray(data) || !data.length) return false;
       object.data = [];
@@ -254,7 +253,6 @@ SOFTWARE.
         clear(data, "recList");
         break;
       case "qpub_animateSloganView":
-        // The home pull-down ad is activated only with a valid image and jump URL.
         for (const key of ["imgUrl", "jumpUrl"]) {
           if (typeof data[key] === "string" && data[key].length) { data[key] = ""; changed = true; }
         }
@@ -264,7 +262,6 @@ SOFTWARE.
         break;
       case "pp_gw_u_myMainCard":
         if (data.financial && typeof data.financial === "object") clear(data.financial, "cards");
-        // The Mine page enables its pull-down second floor only when down.url exists.
         remove(data, "down");
         break;
       case "pp_gw_u_myHeadInfo":
@@ -285,7 +282,6 @@ SOFTWARE.
         if (data.infoFlowCard && typeof data.infoFlowCard === "object") clear(data.infoFlowCard, "list");
         break;
       case "content_api_common_feed_open_postList":
-        // Shared by Mine and Trip. The client may retain its local title/empty view.
         if (!data.bstatus || data.bstatus.code === 0) clear(data, "list");
         break;
     }

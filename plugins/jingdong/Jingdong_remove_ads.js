@@ -34,10 +34,17 @@ if (!$response.body) {
     ["deliverLayer", "orderTrackBusiness"].includes(functionId)
   ) {
     if (obj?.bannerInfo) delete obj.bannerInfo;
+    if (
+      functionId === "orderTrackBusiness" &&
+      obj?.others &&
+      Object.prototype.hasOwnProperty.call(obj.others, "showRecommendation")
+    ) {
+      obj.others.showRecommendation = false;
+    }
     if (obj?.floors?.length > 0) {
       obj.floors = obj.floors.filter(
         (floor) =>
-          !["banner", "jdDeliveryBanner", "noticeFloorTrack"].includes(
+          !["banner", "jdDeliveryBanner", "noticeFloorTrack", "orderTrackWidget"].includes(
             floor?.mId
           )
       );
@@ -350,8 +357,6 @@ if (!$response.body) {
         }
       }
     }
-  } else if (functionId === "uniformRecommend6") {
-    clearRecommendResponse(obj);
   } else if (functionId === "uniformRecommend") {
     const rawRequestBody =
       typeof $request.body === "string" ? $request.body : "";
@@ -371,8 +376,7 @@ if (!$response.body) {
       ["2338", "4262"].includes(String(obj?.adIds || ""));
     const isLogisticsRecommend =
       requestRefererPage === "JDOrderTrackBigMapViewController" ||
-      (requestContext.includes('"source":4') &&
-        requestContext.includes('"newUIStyle":true') &&
+      (/"source"\s*:\s*4\s*[,}]/.test(requestContext) &&
         requestContext.includes('"dlvAddr"'));
     const isMessageRecommend =
       requestContext.includes("NavigationBar_DeployButton") ||

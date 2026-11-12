@@ -2,7 +2,7 @@
 #!desc=移除同程旅行广告
 #!author=ccyykk666[https://github.com/ccyykk666]
 #!system=iOS, iPadOS
-#!date=2026-10-29
+#!date=2026-11-12
 #!loon_version=3.5.1(983)
 #!icon=https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/tongcheng/icon.png
 
@@ -16,8 +16,6 @@ request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appindexnew\/index\/
 request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/userextend\/member\/screenPop(?:\?.*)?$/ then reject(200)
 
 request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appfeeds\/recommend(?:\?.*)?$/ then reject(200)
-
-request if ${url} ~= /^https:\/\/tcmobileapi\.17usoft\.com\/appsearch\/check\/(?:hotlist|searchnearbyscenery)(?:\?.*)?$/ then reject(200)
 
 [Script]
 response if ${url} ~= /^https:\/\/(?:quic-tcmapi\.elong\.com\/hotel\/getNewMainFlowV2|tcmobileapi\.17usoft\.com\/(?:userextend\/member\/myIndex\/v[34]|apptravel\/travel\/list|appindexnew\/index\/(?:getindexlayoutcelllist|getindexlayoutconfig|getsearchboxtext)))(?:\?.*)?$/ && ${request.method} == "POST" && ${response.status} == 200 then script("https://raw.githubusercontent.com/ccyykk666/Loon-Plugin/main/plugins/tongcheng/tongcheng_travel_ad.js") with tag="tongcheng", requires_body=true, binary_body_mode=true, timeout=10
